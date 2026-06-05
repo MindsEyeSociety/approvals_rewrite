@@ -1,0 +1,21 @@
+<table class="data">
+	<tr>
+		<th>Commenter</th>
+		<th>Rating</th>
+		<th>Date</th>
+	</tr>
+	{foreach from=$ratings item=row}
+	<tr{cycle values=", class='dark'"}>
+		<td>{$row.user_id|userInfoPopup}</td>
+		<td align="center">{$row.rating}</td>
+		<td align="center">{$row.comment_date|date_format:"%D %T"}</td>
+	</tr>
+	{/foreach}
+<tr>
+	<td colspan="3">
+		<div class="normalbold">
+		Average Rating: {$average_rating|string_format:"%.1f"} ({$vote_count} Vote{if $vote_count ne 1}s{/if})
+		</div>
+	</td>
+</tr>
+</table>

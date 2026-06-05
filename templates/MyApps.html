@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="anathema.css" type="text/css" rel="stylesheet" />
+	<title>{$page_title}</title>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.7.2.min.js"></script>
+	<script type="text/javascript" src="javascript/jquery.tooltip.js"></script>
+</head>
+
+<body>
+{include file="header.html"}
+<div style="text-align:right;">
+{if $show_all eq 1}
+	<a href="MyApps.php">Hide removed and denied applications</a>
+{else}
+	<a href="MyApps.php?showall=1">Show removed and denied applications</a>
+{/if} 
+</div>
+<table class="data">
+	<tr>
+		<th width="20%" align="center">Item</th>
+		<th width="20%" align="center">Application Number</th>
+		<th width="20%" align="center">Character</th>
+		<th width="10%" align="center">Venue</th>
+		<th width="10%" align="center">Category</th>
+		<th width="10%" align="center">Status</th>
+		<th width="10%" align="center">Last Updated</th>
+	</tr>
+{section name=current_app loop=$applications}
+	{if $applications[current_app].status == "Approved"}
+		<tr class="Approved">
+	{elseif $applications[current_app].status == "Removed" }
+		<tr class="Removed">
+	{elseif $applications[current_app].status == "Denied"}
+		<tr class="Denied">
+	{else}
+		<tr class="Pending">
+	{/if}
+			<td>{$applications[current_app].description}</td>
+			<td><a href="AppDetails.php?id={$applications[current_app].id}&">{$applications[current_app].app_number}</a></td>
+			<td>{$applications[current_app].char_name}</td>
+			<td>{$applications[current_app].venue}</td>
+			<td>{$applications[current_app].category}</td>
+			<td>{$applications[current_app].status}</td>
+			<td>{$applications[current_app].updated_date|date_format:"%D %T"}</td>
+		</tr>
+{sectionelse}
+		<tr>
+{if $show_all eq 1}
+			<td colspan="7" class="dark" align="center">You have added no applications.  To add a new application select "Add Application" from the "Player" menu.</td>
+{else}
+			<td colspan="7" class="dark" align="center">You have no visible applications.  Try Showing all applications by clicking above on "Show removed and denied applications"</td>
+{/if}
+		</tr>
+{/section}
+</table>
+
+{foreach from=$swap_ids item=curr_user}
+<a href="index.php?SWAP_ID={$curr_user.id}">Switch to user: {$curr_user.username}</a><br>
+{/foreach}
+
+{include file="footer.html"}
+</body>
+</html>

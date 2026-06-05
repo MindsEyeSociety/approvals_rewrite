@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="anathema.css" type="text/css" rel="stylesheet" />
+	<title>{$page_title}</title>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.7.2.min.js"></script>
+	<script type="text/javascript" src="javascript/jquery.tooltip.js"></script>
+</head>
+<body>
+{include file="header.html"}
+
+{if $mode eq "display"}<form method="post" action="PlotkitsDetails.php?id={$plotkit.id}&mode=Edit&">
+{else}<form method="post" action="PlotkitsDetailsRecordAction.php">
+{/if}
+<input type="hidden" name="id" value="{$plotkit.id}" />
+<input type="hidden" name="mode" value="{$mode}" />
+<table class="data">
+	{if $inMyVSSList}
+	<tr>
+		<th colspan="3" align="center"><input type="submit" value="{$buttonValue}" /></th>
+	</tr>
+	{/if}
+	<tr>
+		<th>VSS/Organization</th>
+		<th>Plotkit Start Date</th>
+		<th>Plotkit End Date</th>
+	</tr>
+	<tr>
+		<td>
+			{if $mode eq "display"}
+				{if $plotkit.vss_id gt 0}
+					{$plotkit.vss_name}
+				{else}
+					{$plotkit.org_name}
+				{/if}
+			{else}
+				<select name="vss_id">
+					{section name="i" loop="$vsss"}
+						<option value="{$vsss[i].id}">VSS: {$vsss[i].name}</option>
+					{/section}
+					{section name="i" loop="$organizations"}
+						<option value="{$organizations[i].id}">ORG: {$organizations[i].name}</option>
+					{/section}
+				</select>
+			{/if}
+    </td>
+    <td>
+		{if $mode eq "display"}
+			{$plotkit.start_date|date_format:'%D'}
+		{else}
+			<input type="text" name="start_date" size="17" value="{$plotkit.start_date|date_format:'%D'}" />
+		{/if}
+    </td>
+    <td>
+		{if $mode eq "display"}
+			{$plotkit.end_date|date_format:'%D'}
+		{else}
+			<input type="text" name="end_date" size="17" value="{$plotkit.end_date|date_format:'%D'}" />
+		{/if}
+		</td>
+	</tr>
+	<tr>
+		<th colspan="2">Plotkit Title</th>
+		<th>Storyteller</th>
+	</tr>
+	<tr>
+		<td colspan="2">
+			{if $mode eq "display"}
+				{$plotkit.title}
+			{else}
+				<input type="text" name="title" size="40" value="{$plotkit.title}" />
+			{/if}
+		</td>
+		<td>
+			{$plotkit.storyteller_id|userInfoPopup}
+		</td>
+	</tr>
+	<tr>
+		<th colspan="3">Plotkit Details</th>
+	</tr>
+	<tr>
+		<td colspan="3">
+			{if $mode eq "display"}
+				{$plotkit.plot_details|nl2br}
+			{else}
+				<textarea rows="7" cols="65" name="plot_details" wrap="virtual">{$plotkit.plot_details}</textarea>
+			{/if}
+		</td>
+	</tr>
+	<tr>
+		<th colspan="3">Associated URL</th>
+	</tr>
+	<tr>
+		<td colspan="3">
+			{if $mode eq "display"}
+				{if $plotkit.url eq ""}<i>(none)</i>
+				{else}<a href="{$plotkit.url}">{$plotkit.url}</a>
+				{/if}
+			{else}
+				<input type="text" name="url" size="57" value="{$plotkit.url}" />
+			{/if}
+		</td>
+	</tr>
+	<tr>
+		<th colspan="3">Comment</th>
+	</tr>
+	<tr>
+		<td colspan="3">
+			{if $mode eq "display"}
+				{$plotkit.comment|nl2br}
+			{else}
+				<textarea rows="7" cols="65" name="comment" wrap="virtual">{$plotkit.comment}</textarea>
+			{/if}
+    </td>
+  </tr>
+	{if $isOnMyVSS}
+	<tr>
+		<th colspan="3">Private Comment</th>
+	</tr>
+	<tr>
+		<td colspan="3">
+			{if $mode eq "display"}{$plotkit.private_comment|nl2br}
+			{else}<textarea rows="7" cols="65" name="private_comment" wrap="virtual">{$plotkit.private_comment}</textarea>
+			{/if}
+		</td>
+	</tr>
+	<tr>
+	  <th colspan="3" align="center">
+		<input type="submit" value="{$buttonValue}" />
+	  </th>
+	</tr>
+	{/if}
+	{if $canDelete}
+	<tr>
+		<th><input type="submit" value="Delete Plotkit" name="delete" /></th>
+		<th align="right">Confirm Permanent Deletion <input type="checkbox" name="ConfirmDelete" /></th>
+	</tr>
+	{/if}
+</table>
+</form>
+
+{if $mode eq "display"}
+<div align="center" class="normalsmall"><a href="PlotkitsMain.php">Back to Plotkit Listing</a></div>
+{/if}
+{include file="footer.html"}
+{activateUserPopups}
+</body>
+</html>

@@ -1,0 +1,20 @@
+<table width="100%" id="layoutTable">
+<tr>
+<td id="menuCell">
+
+	<a href="http://www.modernenigmasociety.org"><img style='border:0' src="images/mes.png" /></a>
+	
+	<ul>
+		{foreach name=outer from=$menus item=head}
+			<li class="head" title="{$head.tooltip}">{$head.display}</li>
+			{foreach from=$head.items item=entry}
+			<li title="{$entry.tooltip}"><a href="{$entry.url}">{$entry.display}</a></li>
+			{/foreach}
+		{/foreach}
+	</ul>
+</td>
+<td id="contentCell">
+	<div id="header">
+		<h1>{$page_title}</h1>
+	</div>
+	<div style="postion:relative;">

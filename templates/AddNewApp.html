@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="anathema.css" type="text/css" rel="stylesheet" />
+	<title>{$page_title}</title>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.7.2.min.js"></script>
+	<script type="text/javascript" src="javascript/jquery.tooltip.js"></script>
+</head>
+<body>
+{include file="header.html"}
+<form action="AddNewAppIntermediaryPage.php" method="post">
+<input type="hidden" name="user_id" value="{$user_id}">
+<table class="data">
+	<tr>
+		<th align="center">
+			For what character is this application?
+		</th>
+	</tr>
+	<tr>
+		<td align="center">
+			<select name="char_id">
+				{foreach from=$characters item=character}
+					<option value="{$character.id}">{$character.name} ({$character.venue} {$character.char_type})</option>
+				{/foreach}
+				{if !$isFromVSS}
+					<option value="AddNewChar">New Character</option>
+					{if !$isForOtherUser}
+						{if $isStoryteller}
+							<option value="NPC">New NPC</option>
+							<option value="NotMyApplication">One of my Players</option>
+						{/if}
+						<option value="NonChar">VSS or Plotline</option>
+					{/if}
+				{/if}
+			</select>
+		</td>
+	</tr>
+	<tr>
+		<th align="center">
+			<input type="submit" value="Submit">
+		</th>
+	</tr>
+</table>
+</form>
+
+{include file="footer.html"}
+</body>
+</html>

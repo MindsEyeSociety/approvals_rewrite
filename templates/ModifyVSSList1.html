@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="anathema.css" type="text/css" rel="stylesheet" />
+	<title>{$page_title}</title>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.7.2.min.js"></script>
+	<script type="text/javascript" src="javascript/jquery.tooltip.js"></script>
+</head>
+<body>
+{include file="header.html"}
+{if $message eq "InvalidOrg"}
+	<div class="error">Invalid Organization Selected - You must select a Chapter or Domain</div>
+{elseif $message eq "BlankName"}
+	<div class="error">You must name the VSS</div>
+{elseif $message eq "NotStoryteller"}
+	<div class="error">You are not a storyteller over that organization, you cannot add a VSS to it.</div>
+{elseif $message eq "NoName"}
+	<div class="error">You did not specify a name for the VSS.  All VSSs must have a name.</div>
+{/if}
+
+<div class="actions">
+	{if $showall}<a href="ModifyVSSList1.php">Show only VSSs in my Chapter/Domain</a>
+	{else}<a href="ModifyVSSList1.php?showall=1&">Show <i>all</i> VSSs</a>
+	{/if}
+</div>
+
+{*<form action="ModifyVSSList2.php" method="post">*}
+<table class="data">
+	<tr>
+		<th>Domain/Chapter</th>
+		<th>Venue</th>
+		<th>VSS Name</th>
+		<th>Storyteller</th>
+		<th>Del</th>
+		<th>Mod</th>
+	</tr>
+{foreach from=$vssData item=vss}
+	<tr class="vssMetadata {cycle values=",dark"}" id="vss{$vss.id}MetaData">
+		<td>{if $vss.org neq ""}{$vss.org_name} ({$vss.org}){else}&nbsp;{/if}</td>
+		<td>{if $vss.venue neq ""}{$vss.venue}{else}&nbsp;{/if}</td>
+		<td><a href="VSSDetails.php?id={$vss.id}" target="_new">{if $vss.name neq ""}{$vss.name}{else}<span class="noname">No Name</span>{/if}</a></td>
+		<td>{$vss.storyteller_id|userInfoPopup}</td>
+		{if $vss.editable}
+			<td align="center"><a href="ModifyVSSList2.php?delete[]={$vss.id}" onClick="return confirm('Are you sure you wish to delete {$vss.name}?')"><img width="16" height="16" src="images/trash.png"/></a></td>
+			{*<td align="center"><input type="checkbox" name="delete[]" value="{$vss.id}" onClick="return confirm('Are you sure you wish to delete {$vss.name}?');"></td>*}
+			<td align="center"><a href="ModifyVSSList3.php?modify={$vss.id}"><img width="16" height="16" src="images/edit.png"/></a></td>
+			{*<td align="center"><input type="radio" onclick="submit();" name="modify" value="{$vss.id}"></td>*}
+		{else}
+			<td align="center">&nbsp;</td>
+			<td align="center">&nbsp;</td>
+		{/if}
+	</tr>
+{foreachelse}
+	<tr><td colspan="6">No VSSs match your search</td></tr>
+{/foreach}
+	{*<tr class="{cycle values=",dark"}">
+ 		<th align="center" colspan="6"><input type="submit" value="Enter Changes" /></th>
+ 	</tr>*}
+ </table>
+{* </form>*}
+
+{if $can_add}
+<form action="ModifyVSSListAddVSS.php" method="post">
+<table class="data">
+	<tr>
+		<th>Chapter/Domain</th>
+		<th>Venue</th>
+		<th>VSS Name</th>
+		<th>Storyteller</th>
+	</tr>
+	<tr class="dark">
+		<td>
+			<select name="org_id">
+				{foreach from=$organizations item=organization}
+					<option value="{$organization.id}">{$organization.label}</option>
+				{/foreach}
+			</select>
+		</td>
+		<td>
+			<select name="venue_id">
+				{foreach from=$venues item=venue}<option value="{$venue.id}">{$venue.venue}</option>{/foreach}
+			</select>
+		</td>
+		<td>
+			<input type="text" name="name" size="17" maxlength="255">
+		</td>
+		<td>
+			<select name="storyteller_id">
+				{foreach from=$storytellers item=storyteller}<option value="{$storyteller.id}">{$storyteller.name}</option>{/foreach}
+			</select>
+		</td>
+	</tr>	
+        <tr>
+                <th colspan="1">ST Email</td>
+                <td colspan="3"><input type="text" name="email" size="40" maxlength="255" value=""></td>
+       	</tr>
+	<tr>
+		<th colspan="4">VSS</th>
+	</tr>
+	<tr class="dark">
+		<td colspan="4" align="center">
+			<textarea wrap="virtual" name="vss" cols="55" rows="7"></textarea>
+		</td>
+	</tr>
+	<tr>
+		<th colspan="4" align="center">
+			<input type="submit" value="Enter New VSS Information">
+		</th>
+	</tr>
+</table>
+</form>
+{/if}
+
+{include file="footer.html"}
+{activateUserPopups}
+</body>
+</html>

@@ -1,0 +1,26 @@
+<?php
+/**
+ * Settings template — copy this file to settings.inc and fill in real values.
+ * settings.inc is gitignored and must never be committed.
+ */
+
+$SETTINGS = array();
+
+// Approvals database
+$SETTINGS["APPROVALS_SERVER"]   = "your-db-host.example.com";
+$SETTINGS["APPROVALS_USERNAME"] = "db_user";
+$SETTINGS["APPROVALS_PASSWORD"] = "db_password";
+$SETTINGS["APPROVALS_DATABASE"] = "approvals_2017";
+
+// Portal database (MES member data, read-only)
+$SETTINGS["PORTAL_SERVER"]      = "your-db-host.example.com";
+$SETTINGS["PORTAL_USERNAME"]    = "db_user";
+$SETTINGS["PORTAL_PASSWORD"]    = "db_password";
+$SETTINGS["PORTAL_DATABASE"]    = "mes-portal";
+
+// OAuth2 credentials (obtain from MES Portal admin)
+$SETTINGS["OAUTH_CLIENT_ID"]     = "your-oauth-client-id";
+$SETTINGS["OAUTH_CLIENT_SECRET"] = "your-oauth-client-secret";
+$SETTINGS["OAUTH_REDIRECT_URI"]  = "https://your-domain.example.com/oauth_callback.php";
+$SETTINGS["OAUTH_TOKEN_URL"]     = "https://portal.modernenigmasociety.org/oauth/v2/token";
+$SETTINGS["OAUTH_API_URL"]       = "https://portal.modernenigmasociety.org/api/authorized/user.json";

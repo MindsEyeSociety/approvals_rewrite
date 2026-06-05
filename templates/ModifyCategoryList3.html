@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="anathema.css" type="text/css" rel="stylesheet" />
+	<title>{$page_title}</title>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.7.2.min.js"></script>
+	<script type="text/javascript" src="javascript/jquery.tooltip.js"></script>
+</head>
+<body>
+{include file="header.html"}
+
+<form action="ModifyCategoryList4.php" method="post">
+<input type="hidden" value="{$category.id}" name="modify" />
+<table class="data">
+	<tr>
+		<th align="center">Category</th>
+		<th align="center">Venue</th>
+	</tr>
+	<tr class="dark">
+		<td>
+			<input type="text" size="27" name="category" value="{$category.category}" />
+		</td>
+		<td>
+			<select multiple="multiple" name="venue_ids[]" size="{$selectSize}">
+				{section name=i loop=$venueOptions}
+					<option {if in_array($venueOptions[i].id, $venues)}selected="selected" {/if}value="{$venueOptions[i].id}">{$venueOptions[i].venue}</option>
+				{/section}
+			</select>
+		</td>
+	</tr>	
+	<tr>
+		<th align="center" colspan="2">
+			<input type="submit" value="Add Category">
+		</th>
+	</tr>
+</table>
+</form>
+{include file="footer.html"}
+</body>
+</html>

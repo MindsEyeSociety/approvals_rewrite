@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link href="anathema.css" type="text/css" rel="stylesheet" />
+  <title>{$page_title}</title>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.7.2.min.js"></script>
+	<script type="text/javascript" src="javascript/jquery.tooltip.js"></script>
+</head>
+
+<body>
+{include file="header.html"}
+<table class="data">
+  <tr>
+	<td class="normalsmall" align="right" colspan="6">
+		<a href="{$show_hide_url}">{$show_hide_message}</a>	
+	</td>
+	</tr>
+  <tr>
+    <th align="center">Plotkit</th>
+    <th align="center">VSS</th>
+    <th align="center">Start Date</th>
+    <th align="center">End Date</th>
+    <th align="center">Storyteller</th>
+    <th align="center">Link</th>
+  </tr>
+{section name=i loop=$plotkits}
+	<tr class="{cycle values=',dark'}">
+    	<td>&nbsp;<a href='PlotkitsDetails.php?id={$plotkits[i].id}&'>{$plotkits[i].title}</a></td>
+    	<td>&nbsp;<a href='VSSDetails.php?id={$plotkits[i].vss_id}&'>{$plotkits[i].vss_name}</a></td>
+    	<td>&nbsp;{$plotkits[i].start_date|date_format:'%D'}</td>
+    	<td>&nbsp;{$plotkits[i].end_date|date_format:'%D'}</td>
+    	<td>&nbsp;{$plotkits[i].storyteller_id|userInfoPopup}</td>
+    	<td>&nbsp;{if $plotkits[i].url neq ""}<a href='{$plotkits[i].url}'>Link</a>{/if}</td>
+    </tr>
+{/section}
+</table>
+
+{include file="footer.html"}
+{activateUserPopups}
+</body>
+</html>

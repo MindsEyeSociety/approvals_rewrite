@@ -1,0 +1,581 @@
+/* ============================================================
+   anathema.css — Anathema Approval System
+   Dark gothic theme, mobile-first CSS Grid layout.
+   All original class names and IDs are preserved.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. Design tokens
+   ------------------------------------------------------------ */
+:root {
+    --bg:                 #0d0d1a;
+    --surface:            #1a1a2e;
+    --surface-alt:        #22223a;
+    --border:             #3d3d6b;
+    --primary:            #7c6fff;
+    --primary-dark:       #5a50cc;
+    --accent:             #f59e0b;
+    --text:               #e2e8f0;
+    --text-muted:         #94a3b8;
+    --status-fresh:       #15803d;
+    --status-fresh-text:  #bbf7d0;
+    --status-stale:       #92400e;
+    --status-stale-text:  #fde68a;
+    --status-old:         #991b1b;
+    --status-old-text:    #fecaca;
+    --status-removed:     #374151;
+    --status-removed-text:#d1d5db;
+}
+
+/* ------------------------------------------------------------
+   2. Google Fonts import
+   ------------------------------------------------------------ */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Inter:wght@400;600&display=swap');
+
+/* ------------------------------------------------------------
+   3. Base / reset
+   ------------------------------------------------------------ */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 1rem;
+}
+
+body.popup {
+    background: var(--surface);
+}
+
+/* Global links */
+a {
+    color: var(--primary);
+}
+
+a:hover {
+    color: var(--accent);
+}
+
+/* ------------------------------------------------------------
+   4. Layout — mobile-first (block by default)
+   ------------------------------------------------------------ */
+
+/* Hamburger button — visible on mobile */
+#menu-toggle {
+    display: block;
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 1.25rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Wrapper */
+#layout {
+    display: block;
+}
+
+/* Sidebar — slides in from left on mobile */
+#sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 220px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 100;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+#sidebar.open {
+    transform: translateX(0);
+}
+
+/* Main content area */
+#content {
+    padding: 3.5rem 1rem 1rem; /* top clears fixed hamburger */
+}
+
+/* Tablet and up */
+@media (min-width: 769px) {
+    #layout {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        min-height: 100vh;
+    }
+
+    #sidebar {
+        position: static;
+        transform: none;
+        height: auto;
+    }
+
+    #menu-toggle {
+        display: none;
+    }
+
+    #content {
+        padding: 1rem;
+    }
+}
+
+/* ------------------------------------------------------------
+   5. Sidebar nav
+   ------------------------------------------------------------ */
+#sidebar img {
+    max-width: 100%;
+    display: block;
+    margin: 0 auto 1rem;
+}
+
+#sidebar ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#sidebar ul li {
+    margin-left: 0;
+}
+
+#sidebar ul li.head {
+    margin-top: 1rem;
+    padding: 0.25rem 0;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    font-weight: 600;
+    list-style: none;
+}
+
+#sidebar ul li a {
+    display: block;
+    padding: 0.25rem 0.5rem;
+    color: var(--primary);
+    text-decoration: none;
+    border-radius: 3px;
+}
+
+#sidebar ul li a:hover {
+    background: var(--primary-dark);
+    color: var(--text);
+}
+
+/* ------------------------------------------------------------
+   6. Legacy layout elements (kept for any pages still using them)
+   ------------------------------------------------------------ */
+
+/* Legacy table-based layout */
+#layoutTable {
+    width: 100%;
+    border: 0;
+}
+
+#menuCell {
+    padding: 10px;
+    width: 180px;
+    vertical-align: top;
+}
+
+#menuCell ul {
+    margin: 0;
+    padding: 0;
+}
+
+#menuCell ul li {
+    margin-left: 10px;
+}
+
+#menuCell ul li.head {
+    margin: 0;
+    list-style: none;
+    font-weight: bold;
+    color: var(--accent);
+}
+
+#contentCell {
+    vertical-align: top;
+    padding: 10px;
+}
+
+/* ------------------------------------------------------------
+   7. Footer
+   ------------------------------------------------------------ */
+
+/* New semantic footer */
+#site-footer {
+    background: #000;
+    color: #fff;
+    text-align: center;
+    padding: 0.75rem;
+    font-size: 0.8rem;
+}
+
+#site-footer a {
+    color: var(--accent);
+}
+
+/* Legacy footer cells */
+#footerCell {
+    background: #000;
+    color: #fff;
+    text-align: center;
+    padding: 0.5rem 0;
+    font-size: 0.8rem;
+}
+
+#footer a {
+    color: var(--accent);
+}
+
+/* ------------------------------------------------------------
+   8. Header
+   ------------------------------------------------------------ */
+#header h1 {
+    font-family: 'Cinzel', serif;
+    color: var(--text);
+    margin: 0 0 0.75rem;
+    font-size: 1.5rem;
+}
+
+/* ------------------------------------------------------------
+   9. Links in content area
+   ------------------------------------------------------------ */
+#MainTable a:hover {
+    color: var(--accent);
+}
+
+/* ------------------------------------------------------------
+   10. Tooltip
+   ------------------------------------------------------------ */
+#tooltip {
+    position: absolute;
+    z-index: 3000;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    padding: 0.25rem 0.4rem;
+}
+
+#tooltip h3,
+#tooltip div {
+    margin: 0;
+}
+
+/* ------------------------------------------------------------
+   11. Tables
+   ------------------------------------------------------------ */
+table.data {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-collapse: collapse;
+    color: var(--text);
+    width: 100%;
+}
+
+table.data th,
+table.data td {
+    border: 1px solid var(--border);
+    border-collapse: collapse;
+}
+
+table.data th {
+    background: var(--surface-alt);
+    color: var(--primary);
+    padding: 0.4rem 0.5rem;
+    text-align: left;
+}
+
+table.data td {
+    vertical-align: top;
+    padding: 0.3rem 0.5rem;
+}
+
+table.listing {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-collapse: collapse;
+    color: var(--text);
+    width: 98%;
+    margin: 0 1%;
+}
+
+table.listing th,
+table.listing td {
+    border: 1px solid var(--border);
+    border-collapse: collapse;
+}
+
+table.listing th {
+    background: var(--surface-alt);
+    color: var(--primary);
+    padding: 0.4rem 0.5rem;
+    text-align: left;
+}
+
+table.listing td {
+    vertical-align: top;
+    padding: 0.3rem 0.5rem;
+}
+
+/* Alternating rows */
+table.data tr.dark,
+table.listing tr.dark {
+    background: var(--surface-alt);
+}
+
+/* Legacy generic display table */
+table.display {
+    font-size: 1rem;
+}
+
+/* Sorted column header */
+.sort {
+    background: var(--primary-dark);
+    color: var(--text);
+}
+
+/* Mobile horizontal scroll wrapper */
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ------------------------------------------------------------
+   12. Status row / cell classes
+   ------------------------------------------------------------ */
+TR.Approved,
+TD.Approved,
+td.freshLight {
+    background: var(--status-fresh);
+    color: var(--status-fresh-text);
+}
+
+td.freshDark {
+    background: #14532d;
+    color: var(--status-fresh-text);
+}
+
+TR.Pending,
+TD.Pending,
+td.staleLight {
+    background: var(--status-stale);
+    color: var(--status-stale-text);
+}
+
+td.staleDark {
+    background: #78350f;
+    color: var(--status-stale-text);
+}
+
+TR.Denied,
+TD.Denied,
+td.oldLight {
+    background: var(--status-old);
+    color: var(--status-old-text);
+}
+
+td.oldDark {
+    background: #7f1d1d;
+    color: var(--status-old-text);
+}
+
+TR.Removed,
+TD.Removed {
+    background: var(--status-removed);
+    color: var(--status-removed-text);
+}
+
+TR.boundaryRow,
+TD.boundaryRow {
+    background: #000;
+    font-size: 1px;
+    line-height: 1px;
+}
+
+/* ------------------------------------------------------------
+   13. Utility / typography classes
+   ------------------------------------------------------------ */
+.pagehead {
+    text-align: center;
+    font-size: 1.25rem;
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.subhead {
+    text-align: center;
+    font-size: 1.1rem;
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.message {
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.normalmid {
+    font-size: 0.9rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--text-muted);
+}
+
+.normaltext {
+    font-size: 1rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--text);
+}
+
+.normalbold {
+    font-size: 1rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: bold;
+    color: var(--text);
+}
+
+.normalsmall {
+    font-size: 0.8rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--text-muted);
+}
+
+.nonboldsmall {
+    font-size: 0.8rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: normal;
+    color: var(--text-muted);
+}
+
+/* ------------------------------------------------------------
+   14. Error and message boxes
+   ------------------------------------------------------------ */
+
+/* .errmsg — merged single declaration (was duplicated with TD.errmsg) */
+TD.errmsg,
+.errmsg {
+    color: var(--status-old-text);
+    background: var(--status-old);
+    border: 1px solid var(--status-old-text);
+    font-weight: bold;
+    text-align: center;
+    padding: 0.5rem;
+}
+
+/* .error — merged (was duplicated in the original) */
+.error {
+    color: var(--status-old-text);
+    background: var(--status-old);
+    border: 1px solid var(--status-old-text);
+    font-weight: bold;
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.msgbox {
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    text-align: center;
+    font-weight: bold;
+    color: var(--text);
+}
+
+/* ------------------------------------------------------------
+   15. Dropdown menu
+   ------------------------------------------------------------ */
+.menu {
+    font-size: 0.8rem;
+    position: absolute;
+    z-index: 15;
+    top: 24px;
+    background: var(--surface-alt);
+    visibility: hidden;
+    border-width: 1px;
+    border-style: ridge;
+    border-color: var(--border);
+}
+
+/* ------------------------------------------------------------
+   16. Character sheet / monospace content
+   ------------------------------------------------------------ */
+.cs {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    background: var(--surface-alt);
+    padding: 0.75rem;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+
+/* ------------------------------------------------------------
+   17. Form controls
+   ------------------------------------------------------------ */
+input[type=text],
+input[type=password],
+select,
+textarea {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    font-family: inherit;
+}
+
+textarea {
+    width: 98%;
+    font-family: 'Courier New', monospace;
+}
+
+input[type=submit],
+button {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 0.4rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+input[type=submit]:hover,
+button:hover {
+    background: var(--primary-dark);
+}
+
+/* ------------------------------------------------------------
+   18. Version picker (DisplayCharacter.php)
+   ------------------------------------------------------------ */
+.version-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.version-picker label {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}

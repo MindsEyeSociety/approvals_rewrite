@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="anathema.css" type="text/css" rel="stylesheet" />
+	<title>{$page_title}</title>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.7.2.min.js"></script>
+	<script type="text/javascript" src="javascript/jquery.tooltip.js"></script>
+</head>
+<body>
+{include file="header.html"}
+
+{if $message eq "InvalidOrg"}
+	<div align="center" class="error">Invalid Organization Selected - You must select a Chapter or Domain</div>
+{elseif $message eq "NoName"}
+	<div align="center" class="error">You must name the VSS</div>
+{/if}
+
+<form action="ModifyVSSList4.php" method="post">
+<table class="data">
+	<tr>
+		<th align="center">Chapter/Domain</th>
+		<th align="center">Venue</th>
+		<th align="center">VSS Name</th>
+		<th align="center">Storyteller</th>
+	</tr>
+	<tr class="dark">
+		<td>
+			<select name="org_id">
+			{foreach from=$organizations item=organization}
+				<option value="{$organization.id}" {if $organization.id eq $vss.org_id} selected="selected"{/if}>{$organization.label}</option>
+			{/foreach}
+			</select>
+		</td>
+		<td>
+			<select name="venue_id">
+			{foreach from=$venues item=venue}
+				<option value="{$venue.id}" {if $venue.id eq $vss.venue_id} selected="selected"{/if}>{$venue.venue}</option>
+			{/foreach}
+			</select>
+		</td>
+		<td>
+			<input type="text" name="name" size="17" maxlength="255" value="{$vss.name}">
+		</td>
+		<td>
+			<select name="storyteller_id">
+			{foreach from=$storytellers item=storyteller}
+  				<option value="{$storyteller.id}"{if $storyteller.id eq $vss.storyteller_id} selected="selected"{/if}>{$storyteller.name}</option>
+  			{/foreach}
+			</select>
+			</td>
+		</tr>
+		<tr>
+			<th colspan="1">ST Email</td>
+			<td colspan="3"><input type="text" name="email" size="40" maxlength="255" value="{$vss.email}"></td>
+		</tr>
+		<tr>
+			<th colspan="4" align="center">VSS</th>
+		</tr>
+		<tr class="dark">
+				<td colspan="4" align="center">
+					<textarea wrap='virtual' name='vss' cols='55' rows='7'>{$vss.vss}</textarea>
+				</td>
+		</tr>
+		<tr>
+			<th colspan="4" align="center">
+				<input type="hidden" name="id" value="{$vss_id}">
+				<input type="submit" value="Enter New VSS Information">
+			</th>
+		</tr>
+	</table>
+</form>
+
+{include file="footer.html"}
+{activateUserPopups}
+</body>
+</html>

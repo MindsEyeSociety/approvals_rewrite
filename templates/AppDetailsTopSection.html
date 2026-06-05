@@ -1,0 +1,130 @@
+<table class="data">
+  <tr>
+    <th colspan="4">
+		Application #{$app_number}
+    </th>
+  </tr>
+  <tr>
+    <td><b>Item:</b></td>
+    <td>
+    	{if $mode ne "display"}
+    		<input type="text" size="45" maxlength="255" name="description" value="{$app_info->description}" />
+    	{else}
+    		{$app_info->description}
+    	{/if}
+    </td>
+    <td><b>Item Venue:</b></td>
+    <td>
+    	{if $mode ne "display"}
+    		<select name="application_venue_id">
+				{foreach from=$venues item=venue}
+					<option value="{$venue.id}" {if $venue.id eq $app_info->venue_id} selected="selected"{/if}>{$venue.venue}</option>
+    			{/foreach}
+    		</select>
+    	{else}
+    		{if $app_info->venue eq null}N/A{else}{$app_info->venue->venue}{/if}
+    	{/if}
+    </td>
+  </tr>
+  <tr>
+    <td><b>Player:</b></td>
+    <td>
+		<input type="hidden" name="user_id" id="user_id" value="{$app_info->user_id}" />
+		{if !is_object( $app_info->character ) || strtolower($app_info->character->char_type) ne "npc"}
+			{$app_info->user_id|userInfoPopup}
+		{else}
+			{if $app_info->character->vss_id gt 0}
+				<a href="VSSDetails.php?id={$app_info->character->vss_id}" title="Read VSS">{$app_info->character->vss->name}</a> <a href="mailto:{$storyteller.email}" title="Email {$storyteller.name}">(ST: {$storyteller.name})</a>
+			{elseif $app_info->character->vss_id lt 0}
+				<a href="mailto:{$storyteller.email}" title="Email {$storyteller.name}">{$app_info->character->organization.name} (ST:{$storyteller.name})</a>
+			{/if}
+		{/if}
+    </td>
+    <td><b>Character:</b></td>
+    <td>
+		<input type="hidden" name="character_id" value="{$app_info->character_id}" />
+		{if is_object($app_info->character)}
+			<a href="DisplayCharacter.php?char_id={$app_info->character_id}">{$app_info->character->name}</a><br>
+			({if $app_info->character->venue ne null}{$app_info->character->venue->venue}{/if} {$app_info->character->char_type})
+			{$app_info->character->subtype}
+		{else}
+			VSS or Plotline
+		{/if}
+    </td>
+  </tr>
+  <tr>
+    <td><b>Category:</b></td>
+    <td>
+    	{if $mode ne "display"}
+    		<select name="category">
+    			{foreach from=$categories item=category}
+	    			<option value="{$category}" {if $category eq $app_info->category} selected="selected"{/if}>{$category}</option>
+    			{/foreach}
+    		</select>
+    	{else}
+    		{$app_info->category}
+    	{/if}
+    </td>
+    <td><b>Affiliation:</b></td>
+    <td>
+    	{if is_object( $app_info->character ) && is_object( $app_info->character->vss ) }
+    		{$app_info->character->vss->name}<br />
+    	{/if}
+    	{if $thisorg_location}
+    		<i>{$thisorg_location}</i><br />
+    	{/if}
+    	{foreach from=$storytellers item="storyteller"}
+    		<div>{$storyteller.title}: {$storyteller.id|userInfoPopup}</div>
+    	{/foreach}
+    	{if $is_unassigned}
+    		<div style="color:red">NOT ASSIGNED TO A VSS</div>
+    	{/if}
+	</td>
+</tr>
+  <tr>
+    <td><b>Status:</b></td>
+     <td align="left">
+     	{if $mode ne "display"}
+     		<select name="status">
+     			{foreach from=$statuslist item="status"}
+     				<option value="{$status}" {if $app_info->status eq $status}selected="selected"{/if}>{$status}</option>
+     			{/foreach}
+     		</select>
+     	{else}
+     		{$app_info->status}
+     	{/if}
+     </td>
+    <td><b>Approval Required:</b></td>
+    <td>
+    	{if $mode eq "display"}
+    		{$app_info->required_approval}
+    	{else}
+	    	<select name="required_approval">
+				<option {if $app_info->required_approval eq "Low"}selected="selected"{/if}>Low</option>
+				<option {if $app_info->required_approval eq "Mid"}selected="selected"{/if}>Mid</option>
+				<option {if $app_info->required_approval eq "High"}selected="selected"{/if}>High</option>
+				<option {if $app_info->required_approval eq "Top"}selected="selected"{/if}>Top</option>
+				<option {if $app_info->required_approval eq "Global"}selected="selected"{/if}>Global</option>
+			</select>
+		{/if}
+    </td>
+  </tr>
+	{if $mode eq "display"}
+	  	<tr><th colspan="4">
+	  		{if $can_approve}
+				<input class="normalmid" type="submit" name="approve" value="I Approve" />
+			{/if}
+			{if $can_deny}
+				<input class="normalmid" type="submit" name="deny" value="Deny Application" />
+			{/if}
+			{if $app_info->status eq "removed"}
+				<input class="normalmid" type="submit" name="reinstate" value="Reinstate Application" />
+		    {else}
+	      		<input class="normalmid" type="submit" name="remove" value="Remove Application" />
+			{/if}
+			{if $can_publish}
+				<input class="normalmid" type="submit" name="publish" value="Publish Mechanics" />
+			{/if}
+		</th></tr>
+	{/if}
+</table>

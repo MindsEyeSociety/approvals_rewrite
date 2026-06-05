@@ -1,0 +1,81 @@
+<table class="data" id="appDetails">
+	{if $app_info->character}
+		<tr>
+			<th>Character Sheet</th>
+		</tr>
+		<tr>
+			<td>
+				{if $mode ne "display" and $app_info->status ne "Approved"}
+					<textarea style="width:98%;" name="character_sheet" wrap="off" rows="20">{$app_info->character_sheet}</textarea>
+					<div class="normalsmall"><i>Note: This copy of the character sheet does not automatically update to reflect changes made to the 'master' character sheet, which can be found under the 'Character Sheet' section of the <a href="DisplayCharacter.php?char_id=<?php echo($app_info->character_id)?>&">Character Details</a>.</i></div>
+				{else}
+					<div id="characterSheet">
+					{if $app_info->character_sheet eq ""}
+						<em>(None)</em>;
+					{else}
+						{$app_info->character_sheet|formatBlockText}
+					{/if}
+					{if $mode ne display && $app_info->status eq "Approved"} 			
+						<hr size="1" noshade="noshade" align="left" width="85%" />
+						<div class="normalsmall\"><i>This application's copy of the character sheet cannot be altered because the application has been Approved.</i></div>\n");
+					{/if}
+					</div>
+				{/if}
+			</td>
+		</tr>
+		<tr>
+			<th align="center">Current Character Background</th>
+		</tr>
+		<tr>
+			<td>
+				<div id="character_background">
+				{if $app_info->character->background eq ""}
+					<em>(None)</em>
+				{else}
+					{$app_info->character->background|formatBlockText}
+					<div class="normalsmall" style="font-style:italics;">
+						The background can be edited under the 
+						<a href="ModifyCharacterList3.php?modify={$app_info->character_id}&">Character Edit Page</a>
+					</div>
+				{/if}
+				</div>
+			</td>
+		</tr>
+	{/if}
+	<tr>
+		<th align="center">Justification</th>
+	</tr>
+	<tr>
+		<td>
+		{if $mode ne "display"}
+			<textarea name="justification" wrap="virtual" style="width:98%;" rows="20">{$app_info->justification}</textarea>
+		{else}
+			<div id="justification">
+				{if $app_info->justification eq ""}
+					<em>(None)</em>
+				{else}
+					{$app_info->justification|formatBlockText}
+				{/if}
+			</div>
+		{/if}
+		</td>
+	</tr>
+	<tr>
+		<th align="center">Proposed Mechanics (if applicable)</th>
+	</tr>
+	<tr>
+		<td>
+			{if $mode ne "display"}
+				<textarea name="mechanics" id="mechanicsTextArea" style="width:98%;" rows="20">{$app_info->mechanics}</textarea>
+			{else}
+				<div id="mechanics">
+				{if $app_info->mechanics eq ""}
+					<em>(None)</em>
+				{else}
+					{$app_info->mechanics|formatBlockText}
+				{/if}
+				</div>
+			{/if}
+		</td>
+	</tr>
+</table>

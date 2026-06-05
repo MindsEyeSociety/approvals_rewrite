@@ -1,0 +1,31 @@
+<table class="data">
+  <tr>
+  <th>Subject</th>
+  <th>Name</th>
+  <th>Date</th>
+  <th>Visibility</th>
+  <th>Reply</th>
+  </tr>
+  {$comment_rows}
+</table>
+<table class="data">
+  <tr class="dark">
+  <td width="50%" align="center"> 
+  	<b><a href="CommentEnterComment.php?parent_id=0&app_id={$app_info->id}">Comment on this Application</a></b>
+  </td>
+  <td width="50%" align="center">
+  	<b>
+		{if $show_details}
+			<a href="{$hide_details_url}">Hide Details</a>
+			 | <a href="{$show_recent_url}">Show Recent Details</a>
+		{elseif $show_recent_details}
+			<a href="{$show_all_url}">Show All Details</a>
+			| <a href="{$hide_details_url}">Hide Details</a>
+		{else}
+			<a href="{$show_all_url}">Show All Details</a>
+			 | <a href="{$show_recent_url}">Show Recent Details</a>
+		{/if}
+	</b>
+  </td>
+  </tr>
+</table>

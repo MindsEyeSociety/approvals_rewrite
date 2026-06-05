@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="anathema.css" type="text/css" rel="stylesheet" />
+	<title>{$page_title}</title>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.7.2.min.js"></script>
+	<script type="text/javascript" src="javascript/jquery.tooltip.js"></script>
+</head>
+<body>
+{include file="header.html"}
+{if isset($message) && $message eq "DuplicateName"}
+<div class="error">You already have a character with that name</div>
+{elseif isset($message) && $message eq "BlankName"}
+<div class="error">You must enter a name for a character to save it</div>
+{/if}
+<form action="ModifyCharacterListAddCharacter.php" method="post">
+<table class="data details">
+	<tr>
+		<td>Character Name</td>
+		<td>
+			<input type="hidden" name="user_id" value="{$user_id}" />
+			<input type="text" size="27" name="name" />
+		</td>
+	</tr>
+	<tr>
+		<td>Venue</td>
+		<td>
+			<select name="venue">
+				{foreach from=$venues item=venue}
+					<option value="{$venue.id}">{$venue.venue}</option>
+				{/foreach}
+				</select>
+			</td>
+    </tr>
+    <tr>
+			<td>Subtype <font class="normalsmall">(Clan, Kith, Tribe, etc)</font></td>
+			<td>
+				<div id="subtype_container">
+					<input type="text" size="27" name="SubType" id="subtype_text">
+				</div>
+			</td>
+		</tr>
+		<tr>
+			<td>Type</td>
+			<td>
+				<select name="Type">
+					<option value="Primary">Primary</option>
+					<option value="Secondary">Secondary</option>
+				</select>
+			</td>
+		</tr>
+		<tr>
+			<td>Character Sheet</td>
+			<td>
+				<textarea name="character_sheet" cols="65" rows="10" wrap="virtual"></textarea>
+			</td>
+		</tr>
+		<tr>
+			<td>Background</td>
+			<td>
+				<textarea name="Background" cols="65" rows="10" wrap="virtual"></textarea>
+			</td>
+		</tr>
+		<tr>
+			<th colspan="4">
+				<input type="submit" value="Enter New Information" />
+			</th>
+		</tr>
+</table>
+</form>
+
+<script type="text/javascript">
+var subtypes = {$js_subtypes};
+
+$(document).ready(function() {
+    $('select[name="venue"]').change(function() {
+        updateSubtypeField();
+    });
+
+    // Initial update
+    updateSubtypeField();
+});
+
+function updateSubtypeField() {
+    var venueId = $('select[name="venue"]').val();
+    var container = $('#subtype_container');
+
+    if (subtypes[venueId] && subtypes[venueId].length > 0) {
+        // Show dropdown
+        var selectHtml = '<select name="SubType" id="subtype_select">';
+        selectHtml += '<option value="">-- Select Subtype --</option>';
+        for (var i = 0; i < subtypes[venueId].length; i++) {
+            selectHtml += '<option value="' + subtypes[venueId][i].subtype + '">' + subtypes[venueId][i].subtype + '</option>';
+        }
+        selectHtml += '</select>';
+        container.html(selectHtml);
+    } else {
+        // Show text input
+        container.html('<input type="text" size="27" name="SubType" id="subtype_text">');
+    }
+}
+</script>
+
+{include file="footer.html"}
+</body>
+</html>

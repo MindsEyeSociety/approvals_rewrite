@@ -1,0 +1,28 @@
+# Secrets — never commit
+include/settings.inc
+
+# Logs
+*.log
+revision.log
+vssmove.log
+
+# Database dumps
+*.sql
+
+# Backups and junk (date-stamped, .bak, .debug, .temp variants)
+*.bak
+*.temp
+*.debug
+*-backup
+*-backup*
+*.20[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]
+*.20[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-*
+MES Membership Handbook 2025.md
+
+# Runtime-generated directories
+backups/
+cache/
+templates_c/
+
+# Submodule (managed separately)
+PHP-OAuth2

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="anathema.css" type="text/css" rel="stylesheet" />
+	<title>{$page_title}</title>
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.7.2.min.js"></script>
+	<script type="text/javascript" src="javascript/jquery.tooltip.js"></script>
+</head>
+<body>
+{include file="header.html"}
+
+<form action="ModifyCategoryListAddCategory.php" method="post">
+<table class="data">
+	<tr>
+		<th align="center">Category</th>
+		<th align="center">Venue</th>
+	</tr>
+	<tr class="dark">
+		<td>
+			<input type="text" size="27" name="category">
+		</td>
+		<td>
+			<select multiple="multiple" name="venue_ids[]" size="{$selectSize}">
+				{section name=i loop=$venueOptions}
+					<option selected="selected" value="{$venueOptions[i].id}">{$venueOptions[i].venue}</option>
+				{/section}
+			</select>
+		</td>
+	</tr>	
+	<tr>
+		<th align="center" colspan="2">
+			<input type="submit" value="Add Category">
+		</th>
+	</tr>
+</table>
+</form>
+<form action="ModifyCategoryList2.php" method="post">
+<table class="data">
+	<thead>
+	<tr>
+		<th align="center">Category</th>
+		<th align="center">Venue</th>
+		<th align="center">Delete</th>
+		<th align="center">Modfiy</th>
+	</tr>
+	</thead>
+	<tbody>
+		{foreach from=$categories item=category}
+		<tr class="{cycle values=",dark"}">
+			<td>{$category.category}</td>
+			<td>{$category.venues}</td>
+			<td><input type="checkbox" name="delete[]" value="{$category.id}" /></td>
+			<td><input type="radio" name="modify" value="{$category.id}" /></td>
+		</tr>
+		{/foreach}
+	</tbody>
+	<tfoot>
+		<tr class="{cycle values=",dark"}">
+			<td colspan="4"><input type="submit" value="Enter Changes" /></td>
+		</tr>
+	</tfoot>
+</table>
+</form>
+{include file="footer.html"}
+</body>
+</html>

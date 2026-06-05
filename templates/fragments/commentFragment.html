@@ -1,0 +1,17 @@
+<tr class="dark">
+	<td style="padding-left:{$depth*5}px;">
+		<a href="javascript:newWindow=window.open('CommentDisplay.php?comment_id={$comment.id}&showdetails=1','CommentWindow{$comment.id}','scrollbars=yes,width=750,height=550');newWindow.focus();">{$comment.subject}</a>
+		{if $comment.show_vote}
+			( Vote: {$comment.rating}/5 )
+		{/if}
+	</td>
+	<td>{$comment.user_id|userInfoPopup}</td>
+	<td align="center">{$comment.comment_date|date_format:"%D, %T"}</td>
+	<td align="center">
+		{if $comment.constraint_level eq ""}
+		Unconstrained{else}
+		{$comment.constraint_level}{/if}
+	</td>
+	<td align='center'><a href="CommentEnterComment.php?parent_id={$comment.id}&app_id={$app_info->id}&\">Reply</a></td>
+</tr>
+<tr><td colspan="5">{$comment.comment|formatBlockText}</td></tr>
