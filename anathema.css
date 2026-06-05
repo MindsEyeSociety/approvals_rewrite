@@ -579,3 +579,87 @@ button:hover {
     color: var(--text-muted);
     font-size: 0.875rem;
 }
+
+/* ------------------------------------------------------------
+   19. Theme picker control (sidebar)
+   ------------------------------------------------------------ */
+.theme-picker {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.theme-picker label {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+}
+
+.theme-picker select {
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.4rem;
+}
+
+/* ------------------------------------------------------------
+   20. Colorblind mode theme (Okabe & Ito palette)
+       Applied via body.colorblind — dark background preserved,
+       status colours replaced with blue/gold/vermillion.
+   ------------------------------------------------------------ */
+body.colorblind {
+    --accent:             #56b4e9;
+    --status-fresh:       #1e3a5f;
+    --status-fresh-text:  #93c5fd;
+    --status-stale:       #4d3c00;
+    --status-stale-text:  #fef08a;
+    --status-old:         #7a2600;
+    --status-old-text:    #fecdb2;
+}
+
+body.colorblind td.freshDark { background: #162d4a; color: #93c5fd; }
+body.colorblind td.staleDark { background: #3a2d00; color: #fef08a; }
+body.colorblind td.oldDark   { background: #5c1d00; color: #fecdb2; }
+
+/* ------------------------------------------------------------
+   21. Light mode theme
+       Applied via body.light — flips to white/light-grey
+       surface with dark text.
+   ------------------------------------------------------------ */
+body.light {
+    --bg:                 #f8f8fc;
+    --surface:            #ffffff;
+    --surface-alt:        #f0f0f8;
+    --border:             #c0bce8;
+    --primary:            #5a50cc;
+    --primary-dark:       #4338a8;
+    --accent:             #b45309;
+    --text:               #1a1a2e;
+    --text-muted:         #4b5563;
+    --status-fresh:       #d1fae5;
+    --status-fresh-text:  #065f46;
+    --status-stale:       #fef3c7;
+    --status-stale-text:  #92400e;
+    --status-old:         #fee2e2;
+    --status-old-text:    #991b1b;
+    --status-removed:     #f3f4f6;
+    --status-removed-text:#374151;
+}
+
+body.light td.freshDark { background: #a7f3d0; color: #065f46; }
+body.light td.staleDark { background: #fde68a; color: #92400e; }
+body.light td.oldDark   { background: #fecaca; color: #991b1b; }
+
+body.light #site-footer {
+    background: #e8e8f0;
+    color: #1a1a2e;
+}
+
+body.light #site-footer a { color: var(--accent); }
+
+body.light input[type=submit],
+body.light button {
+    color: #fff;
+}

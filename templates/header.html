@@ -1,20 +1,58 @@
-<table width="100%" id="layoutTable">
-<tr>
-<td id="menuCell">
-
-	<a href="http://www.modernenigmasociety.org"><img style='border:0' src="images/mes.png" /></a>
-	
-	<ul>
-		{foreach name=outer from=$menus item=head}
-			<li class="head" title="{$head.tooltip}">{$head.display}</li>
-			{foreach from=$head.items item=entry}
-			<li title="{$entry.tooltip}"><a href="{$entry.url}">{$entry.display}</a></li>
-			{/foreach}
-		{/foreach}
-	</ul>
-</td>
-<td id="contentCell">
-	<div id="header">
-		<h1>{$page_title}</h1>
-	</div>
-	<div style="postion:relative;">
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d0d1a">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link href="anathema.css" type="text/css" rel="stylesheet" />
+  <title>{$page_title}</title>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="javascript/jquery.tooltip.js"></script>
+</head>
+<body>
+<div id="layout">
+  <button id="menu-toggle" aria-label="Open navigation menu" aria-expanded="false">&#9776;</button>
+  <nav id="sidebar">
+    <a href="http://www.modernenigmasociety.org/"><img style="border:0" src="images/mes.png" alt="Modern Enigma Society" /></a>
+    <ul>
+      {foreach name=outer from=$menus item=head}
+        <li class="head" title="{$head.tooltip}">{$head.display}</li>
+        {foreach from=$head.items item=entry}
+        <li title="{$entry.tooltip}"><a href="{$entry.url}">{$entry.display}</a></li>
+        {/foreach}
+      {/foreach}
+    </ul>
+    <div class="theme-picker">
+      <label for="theme-picker">Colour theme</label>
+      <select id="theme-picker">
+        <option value="dark">Dark mode</option>
+        <option value="light">Light mode</option>
+        <option value="colorblind">Colorblind mode</option>
+      </select>
+    </div>
+  </nav>
+  <main id="content">
+    <div id="header">
+      <h1>{$page_title}</h1>
+    </div>
+<script>
+document.getElementById('menu-toggle').addEventListener('click', function() {
+  var s = document.getElementById('sidebar');
+  s.classList.toggle('open');
+  this.setAttribute('aria-expanded', s.classList.contains('open'));
+});
+(function() {
+  var saved = localStorage.getItem('theme') || 'dark';
+  document.body.classList.toggle('colorblind', saved === 'colorblind');
+  document.body.classList.toggle('light', saved === 'light');
+  document.getElementById('theme-picker').value = saved;
+  document.getElementById('theme-picker').addEventListener('change', function() {
+    var t = this.value;
+    localStorage.setItem('theme', t);
+    document.body.classList.toggle('colorblind', t === 'colorblind');
+    document.body.classList.toggle('light', t === 'light');
+  });
+}());
+</script>

@@ -28,6 +28,14 @@
 	}
 ?>
     </ul>
+    <div class="theme-picker">
+      <label for="theme-picker">Colour theme</label>
+      <select id="theme-picker">
+        <option value="dark">Dark mode</option>
+        <option value="light">Light mode</option>
+        <option value="colorblind">Colorblind mode</option>
+      </select>
+    </div>
   </nav>
   <main id="content">
     <div id="header">
@@ -39,4 +47,16 @@ document.getElementById('menu-toggle').addEventListener('click', function() {
   s.classList.toggle('open');
   this.setAttribute('aria-expanded', s.classList.contains('open'));
 });
+(function() {
+  var saved = localStorage.getItem('theme') || 'dark';
+  document.body.classList.toggle('colorblind', saved === 'colorblind');
+  document.body.classList.toggle('light', saved === 'light');
+  document.getElementById('theme-picker').value = saved;
+  document.getElementById('theme-picker').addEventListener('change', function() {
+    var t = this.value;
+    localStorage.setItem('theme', t);
+    document.body.classList.toggle('colorblind', t === 'colorblind');
+    document.body.classList.toggle('light', t === 'light');
+  });
+}());
 </script>
