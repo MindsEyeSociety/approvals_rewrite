@@ -9,6 +9,14 @@
   <link href="anathema.css" type="text/css" rel="stylesheet" />
   <title>{$page_title}</title>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script>
+    // Compatibility shim for the ancient jquery.tooltip.js plugin (2008 era),
+    // which does feature detection like $.browser.msie and was written for jQuery <1.9.
+    // jQuery 3+ removed $.browser entirely. This prevents the "Cannot read properties of undefined (reading 'msie')" error.
+    if (typeof jQuery.browser === 'undefined') {
+      jQuery.browser = { msie: false };
+    }
+  </script>
   <script src="javascript/jquery.tooltip.js"></script>
 </head>
 <body>
@@ -45,24 +53,17 @@ document.getElementById('menu-toggle').addEventListener('click', function() {
   } catch (e) {}
   document.body.classList.toggle('colorblind', saved === 'colorblind');
   document.body.classList.toggle('light', saved === 'light');
-  console.log('[theme-diag] on load applied toggles for saved=', saved, 'body className now=', document.body.className);
   var picker = document.getElementById('theme-picker');
   if (picker) {
     picker.value = saved;
-    console.log('[theme-diag] picker found on load, saved=', saved, 'initial body classes=', document.body.className);
     picker.addEventListener('change', function() {
       var t = this.value;
-      console.log('[theme-diag] change fired on picker, t=', t);
       try {
         localStorage.setItem('theme', t);
-        console.log('[theme-diag] localStorage updated to', t);
-      } catch (e) { console.log('[theme-diag] localStorage set error', e); }
+      } catch (e) {}
       document.body.classList.toggle('colorblind', t === 'colorblind');
       document.body.classList.toggle('light', t === 'light');
-      console.log('[theme-diag] after toggle, body className=', document.body.className);
     });
-  } else {
-    console.log('[theme-diag] picker NOT found on load!');
   }
 }());
 </script>
