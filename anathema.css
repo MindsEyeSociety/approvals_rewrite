@@ -621,6 +621,8 @@ body.colorblind {
     --status-stale-text:  #1a1a2e;  /* dark for contrast on bright bg */
     --status-old:         #D55E00;  /* vermillion */
     --status-old-text:    #ffffff;
+    --status-removed:     #999999;  /* grey from palette */
+    --status-removed-text:#e2e8f0;
 }
 
 body.colorblind td.freshDark { background: #009E73; color: #ffffff; }
