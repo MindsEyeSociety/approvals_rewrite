@@ -36,11 +36,6 @@
         <option value="colorblind">Colorblind mode</option>
       </select>
     </div>
-  </nav>
-  <main id="content">
-    <div id="header">
-      <h1><?php echo $pagetitle?></h1>
-    </div>
 <script>
 document.getElementById('menu-toggle').addEventListener('click', function() {
   var s = document.getElementById('sidebar');
@@ -48,15 +43,29 @@ document.getElementById('menu-toggle').addEventListener('click', function() {
   this.setAttribute('aria-expanded', s.classList.contains('open'));
 });
 (function() {
-  var saved = localStorage.getItem('theme') || 'dark';
+  var saved = 'dark';
+  try {
+    saved = localStorage.getItem('theme') || 'dark';
+  } catch (e) {}
   document.body.classList.toggle('colorblind', saved === 'colorblind');
   document.body.classList.toggle('light', saved === 'light');
-  document.getElementById('theme-picker').value = saved;
-  document.getElementById('theme-picker').addEventListener('change', function() {
-    var t = this.value;
-    localStorage.setItem('theme', t);
-    document.body.classList.toggle('colorblind', t === 'colorblind');
-    document.body.classList.toggle('light', t === 'light');
-  });
+  var picker = document.getElementById('theme-picker');
+  if (picker) {
+    picker.value = saved;
+    picker.addEventListener('change', function() {
+      var t = this.value;
+      try {
+        localStorage.setItem('theme', t);
+      } catch (e) {}
+      document.body.classList.toggle('colorblind', t === 'colorblind');
+      document.body.classList.toggle('light', t === 'light');
+    });
+  }
 }());
 </script>
+  </nav>
+  <main id="content">
+    <div id="header">
+      <h1><?php echo $pagetitle?></h1>
+    </div>
+
