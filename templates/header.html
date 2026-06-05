@@ -45,17 +45,24 @@ document.getElementById('menu-toggle').addEventListener('click', function() {
   } catch (e) {}
   document.body.classList.toggle('colorblind', saved === 'colorblind');
   document.body.classList.toggle('light', saved === 'light');
+  console.log('[theme-diag] on load applied toggles for saved=', saved, 'body className now=', document.body.className);
   var picker = document.getElementById('theme-picker');
   if (picker) {
     picker.value = saved;
+    console.log('[theme-diag] picker found on load, saved=', saved, 'initial body classes=', document.body.className);
     picker.addEventListener('change', function() {
       var t = this.value;
+      console.log('[theme-diag] change fired on picker, t=', t);
       try {
         localStorage.setItem('theme', t);
-      } catch (e) {}
+        console.log('[theme-diag] localStorage updated to', t);
+      } catch (e) { console.log('[theme-diag] localStorage set error', e); }
       document.body.classList.toggle('colorblind', t === 'colorblind');
       document.body.classList.toggle('light', t === 'light');
+      console.log('[theme-diag] after toggle, body className=', document.body.className);
     });
+  } else {
+    console.log('[theme-diag] picker NOT found on load!');
   }
 }());
 </script>
