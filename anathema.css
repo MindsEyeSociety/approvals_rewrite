@@ -335,6 +335,14 @@ table.listing tr.dark {
     background: var(--surface-alt);
 }
 
+/* Special full-width message rows (e.g. "no applications" in MyApps.php)
+   Use main surface color instead of alt, to avoid bright bg + mismatched text. */
+table.data td.dark,
+table.listing td.dark {
+    background: var(--surface);
+    color: var(--text);
+}
+
 /* Legacy generic display table */
 table.display {
     font-size: 1rem;
@@ -602,21 +610,22 @@ button:hover {
 /* ------------------------------------------------------------
    20. Colorblind mode theme (Okabe & Ito palette)
        Applied via body.colorblind — dark background preserved,
-       status colours replaced with blue/gold/vermillion.
+       status colours replaced with the accessible Okabe-Ito palette
+       (https://easystats.github.io/see/reference/scale_color_okabeito.html).
    ------------------------------------------------------------ */
 body.colorblind {
-    --accent:             #56b4e9;
-    --status-fresh:       #1e3a5f;
-    --status-fresh-text:  #93c5fd;
-    --status-stale:       #4d3c00;
-    --status-stale-text:  #fef08a;
-    --status-old:         #7a2600;
-    --status-old-text:    #fecdb2;
+    --accent:             #56B4E9;  /* light blue */
+    --status-fresh:       #009E73;  /* green */
+    --status-fresh-text:  #ffffff;
+    --status-stale:       #E69F00;  /* orange */
+    --status-stale-text:  #1a1a2e;  /* dark for contrast on bright bg */
+    --status-old:         #D55E00;  /* vermillion */
+    --status-old-text:    #ffffff;
 }
 
-body.colorblind td.freshDark { background: #162d4a; color: #93c5fd; }
-body.colorblind td.staleDark { background: #3a2d00; color: #fef08a; }
-body.colorblind td.oldDark   { background: #5c1d00; color: #fecdb2; }
+body.colorblind td.freshDark { background: #009E73; color: #ffffff; }
+body.colorblind td.staleDark { background: #E69F00; color: #1a1a2e; }
+body.colorblind td.oldDark   { background: #D55E00; color: #ffffff; }
 
 /* ------------------------------------------------------------
    21. Light mode theme
