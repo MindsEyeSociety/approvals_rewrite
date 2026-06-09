@@ -24,3 +24,11 @@ $SETTINGS["OAUTH_CLIENT_SECRET"] = "your-oauth-client-secret";
 $SETTINGS["OAUTH_REDIRECT_URI"]  = "https://your-domain.example.com/oauth_callback.php";
 $SETTINGS["OAUTH_TOKEN_URL"]     = "https://portal.modernenigmasociety.org/oauth/v2/token";
 $SETTINGS["OAUTH_API_URL"]       = "https://portal.modernenigmasociety.org/api/authorized/user.json";
+
+// Early access / phased rollout whitelist (controlled by this boolean + the "early-access" plaintext file in the web root).
+// Set to true to turn the feature on. The file "early-access" must contain one membership number (cam_number / ww_number / membershipNumber) per line.
+// Matching is performed case-insensitively (strtolower on both the session value and file entries after trim).
+// Non-whitelisted users (after successful portal OAuth) will be shown a denial message and blocked from the rest of the site.
+// When false (or key absent), the feature is completely disabled with zero overhead and full normal access for any valid member.
+// The early-access file itself is never created/committed here (user maintains it on the server, like this settings.inc).
+$SETTINGS["EARLY_ACCESS_ENABLED"] = false;

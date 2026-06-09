@@ -4,6 +4,10 @@ if ( !isset( $_SESSION['user_id'] ) && !isset( $IGNORE_LOGIN ) ) {
     exit();
 }
 
+enforce_early_access();   // early access / phased rollout gate (if enabled in settings).
+                          // Non-whitelisted users (by cam_number vs the "early-access" file) see the denial message here.
+                          // Placed after the normal login gate but before any menus or page logic (applies to all protected pages).
+
 if ( !isset( $pagetitle ) ) { $pagetitle='Approvals System'; }
 
 /*

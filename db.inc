@@ -26,6 +26,61 @@ header( "Expires: -1" );
 include_once("include/ResultSet.class.php");
 include_once("include/Database.class.php");
 
+// --- Early access whitelist support (simplest possible implementation) ---
+// Controlled entirely by $SETTINGS["EARLY_ACCESS_ENABLED"] (see settings.inc.example).
+// When enabled, only membership numbers listed (one per line) in the "early-access" plaintext file
+// (placed in the web root alongside this db.inc) are allowed past the login gate.
+// Matching is strictly case-insensitive (strtolower + trim on both sides).
+// Non-listed users see the exact denial message and are blocked (the "page").
+// If the flag is false/absent or the file is missing while enabled, the check is a no-op or safe-deny respectively.
+// The functions are defined here (db.inc is included extremely early by login + almost all pages)
+// so they are available for the call sites in index.php (post-OAuth) and header.inc (per-page gate).
+
+function enforce_early_access() {
+	global $SETTINGS;
+	if (empty($SETTINGS["EARLY_ACCESS_ENABLED"])) {
+		return; // feature completely off - zero cost, normal access for any valid member
+	}
+	$cam = $_SESSION['cam_number'] ?? '';
+	if (empty($cam)) {
+		return; // not yet authenticated (pre-login or public $IGNORE_LOGIN path); other gates will handle
+	}
+	$whitelist_file = __DIR__ . '/early-access'; // web root (db.inc lives there)
+	if (!file_exists($whitelist_file)) {
+		// enabled but no file -> safe deny everyone (prevents accidental open access during phase)
+		early_access_denied();
+		return;
+	}
+	$lines = file($whitelist_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+	$whitelist = array_map('strtolower', array_map('trim', $lines));
+	if (!in_array(strtolower(trim($cam)), $whitelist, true)) {
+		early_access_denied();
+	}
+}
+
+function early_access_denied() {
+	// The "page" the non-whitelisted user is shown. Self-contained, no includes (avoids loops or extra gates).
+	// Exact message text as specified.
+	header('HTTP/1.1 403 Forbidden');
+	?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Early Access Restricted</title>
+<style>body{font-family:Arial,Helvetica,sans-serif;text-align:center;padding:3em;line-height:1.5}</style>
+</head>
+<body>
+<h1>Early Access Restricted</h1>
+<p>The database is in a phased rollout period and currently access is restricted to storytellers only.</p>
+</body>
+</html>
+	<?php
+	exit();
+}
+
+// --- end early access support ---
+
 function userValidForNumber( $id, $camnum ) {
 	global $db;
 
