@@ -616,18 +616,50 @@ button:hover {
 body.colorblind {
     --accent:             #56B4E9;  /* light blue */
     --status-fresh:       #009E73;  /* green */
-    --status-fresh-text:  #ffffff;
-    --status-stale:       #E69F00;  /* orange */
-    --status-stale-text:  #1a1a2e;  /* dark for contrast on bright bg */
+    --status-fresh-text:  #000000;  /* black from Okabe-Ito palette for contrast on bright bg */
+    --status-stale:       #0072B2;  /* blue from Okabe-Ito palette (changed from orange for better contrast with purple links on dark mode) */
+    --status-stale-text:  #000000;  /* black from Okabe-Ito palette for contrast on bright bg */
     --status-old:         #D55E00;  /* vermillion */
-    --status-old-text:    #ffffff;
+    --status-old-text:    #000000;  /* black from Okabe-Ito palette for contrast on bright bg */
     --status-removed:     #999999;  /* grey from palette */
-    --status-removed-text:#e2e8f0;
+    --status-removed-text:#000000;  /* black from Okabe-Ito palette for contrast on bright bg */
 }
 
-body.colorblind td.freshDark { background: #009E73; color: #ffffff; }
-body.colorblind td.staleDark { background: #E69F00; color: #1a1a2e; }
-body.colorblind td.oldDark   { background: #D55E00; color: #ffffff; }
+body.colorblind TR.Approved,
+body.colorblind TD.Approved,
+body.colorblind td.freshLight {
+    background: var(--status-fresh);
+    color: var(--status-fresh-text);
+}
+
+body.colorblind TR.Pending,
+body.colorblind TD.Pending,
+body.colorblind td.staleLight {
+    background: var(--status-stale);
+    color: var(--status-stale-text);
+}
+
+body.colorblind TR.Pending a,
+body.colorblind TD.Pending a {
+    color: #000000; /* black from Okabe-Ito palette to make purple links readable on the status row bg in dark mode */
+}
+
+body.colorblind TR.Denied,
+body.colorblind TD.Denied,
+body.colorblind td.oldLight {
+    background: var(--status-old);
+    color: var(--status-old-text);
+}
+
+body.colorblind TR.Removed,
+body.colorblind TD.Removed {
+    background: var(--status-removed);
+    color: var(--status-removed-text);
+}
+
+body.colorblind td.freshDark { background: #009E73; color: #000000; }
+body.colorblind td.staleDark { background: #0072B2; color: #000000; }
+body.colorblind td.oldDark   { background: #D55E00; color: #000000; }
 
 /* ------------------------------------------------------------
    21. Light mode theme
@@ -652,6 +684,33 @@ body.light {
     --status-old-text:    #991b1b;
     --status-removed:     #f3f4f6;
     --status-removed-text:#374151;
+}
+
+body.light TR.Approved,
+body.light TD.Approved,
+body.light td.freshLight {
+    background: var(--status-fresh);
+    color: var(--status-fresh-text);
+}
+
+body.light TR.Pending,
+body.light TD.Pending,
+body.light td.staleLight {
+    background: var(--status-stale);
+    color: var(--status-stale-text);
+}
+
+body.light TR.Denied,
+body.light TD.Denied,
+body.light td.oldLight {
+    background: var(--status-old);
+    color: var(--status-old-text);
+}
+
+body.light TR.Removed,
+body.light TD.Removed {
+    background: var(--status-removed);
+    color: var(--status-removed-text);
 }
 
 body.light td.freshDark { background: #a7f3d0; color: #065f46; }
