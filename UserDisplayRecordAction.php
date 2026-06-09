@@ -1,6 +1,6 @@
 <?php
 $mode=$_POST["mode"];
-$ww_number = strtoupper( $_POST['ww_number'] );
+$ww_number = strtoupper( $_POST['ww_number'] ?? '' );
 $errmsgs=array();
 if ($mode=="doAdd") {
 	if ( count($errmsgs)==0 ) {
@@ -38,7 +38,7 @@ if ($mode=="doAdd") {
     $db->query($query, [$_POST["org_id"], $_POST["id"]]);
 
     if( $_POST["admin_org_id"] ) {
-      if ( $_POST["venue_id"] || $_POST["assistant"] ) {
+      if ( ($_POST["venue_id"] ?? null) || ($_POST["assistant"] ?? null) ) {
         $thisassistant=1;
       } else {
         $thisassistant=0;
