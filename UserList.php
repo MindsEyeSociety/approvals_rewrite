@@ -142,7 +142,7 @@ Search: <input type="text" class="normalmid" name="search" value="<?php echo $fi
 	</colgroup>
 	<tr>
 		<th>Name</th>
-		<th><a href="UserList.php?sortby=Affiliation&search=<?php echo $search?>">Affiliation</a></th>
+		<th><a href="UserList.php?sortby=Affiliation&search=<?php echo htmlspecialchars($filter['search'])?>">Affiliation</a></th>
 		<th>Position</th>
 		<th>&nbsp;</th>
 	</tr>
