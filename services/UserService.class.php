@@ -11,30 +11,29 @@ class UserService {
 
 	function fetchMatchingUsers( $filter = array() ) {
 		global $db;
-		$query=
-			"SELECT pu.firstName as firstname, ".
-			"  pu.lastName as lastname, ".
-			"  pu.emailAddress as email, ".
-			"  pu.phoneNumber as phone, ".
+		$query =
+			"SELECT puc.first_name as firstname, ".
+			"  puc.last_name as lastname, ".
+			"  puc.email as email, ".
 			"  u.*, ".
 			"  o.org_name as org_name " .
 			"FROM users u ".
-			"LEFT JOIN organizations o on u.org_id = o.id " .
-			"LEFT JOIN `mes-portal`.User pu ON u.ww_number = pu.membershipNumber ";
-	
+			"LEFT JOIN organizations o ON u.org_id = o.id " .
+			"LEFT JOIN portal_user_cache puc ON u.ww_number = puc.ww_number ";
+
 		$query .= $this->buildSearchClause($filter);
-	
+
 		$query .= sprintf(
 			"ORDER BY lastname, firstname ".
 			"LIMIT %d, 20",
-			$filter["skip"]
+			(int)$filter["skip"]
 		);
-	
-	  $rs = $db->query($query);
+
+		$rs = $db->query($query);
 		$rows = array();
 		while( $row = $rs->nextRow() ) {
-	 	  $row['name'] = $this->buildName( $row['firstname'], $row['lastname'] );
-		  $rows[] = $row;
+			$row['name'] = $this->buildName( $row['firstname'], $row['lastname'] );
+			$rows[] = $row;
 		}
 		return $rows;
 	}
@@ -42,34 +41,36 @@ class UserService {
 	function countMatchingUsers( $filter = array() ) {
 		global $db;
 
-		$countQuery = 
+		$countQuery =
 			"SELECT count(*) as usercount " .
 			"FROM users u " .
-			"LEFT JOIN organizations o on u.org_id = o.id " .
-			"LEFT JOIN `mes-portal`.User pu ON u.ww_number = pu.membershipNumber ";
+			"LEFT JOIN organizations o ON u.org_id = o.id " .
+			"LEFT JOIN portal_user_cache puc ON u.ww_number = puc.ww_number ";
 		$countQuery .= $this->buildSearchClause($filter);
 		$db->query($countQuery);
-		$row=$db->nextRow();
+		$row = $db->nextRow();
 		return $row["usercount"];
 	}
-	
+
 	function buildSearchClause( $filter = array() ) {
 		global $db;
-		if( "" == $filter["search"] ) {
-			return "WHERE pu.membershipExpiration > NOW() ";
+		if( "" == ($filter["search"] ?? "") ) {
+			return "WHERE puc.membership_expiration > NOW() ";
 		}
+		// Use prefix LIKE (no leading wildcard) so indexes on ww_number,
+		// last_name, and first_name can be used by the query planner.
 		$searchClause =
 			"WHERE ( ".
-			"  u.ww_number like '%s' ".
-			"  or pu.lastName = '%s' ".
-			"  or pu.firstName = '%s' ".
+			"  u.ww_number LIKE '%s' ".
+			"  OR puc.last_name LIKE '%s' ".
+			"  OR puc.first_name LIKE '%s' ".
 			") ".
-			"AND pu.membershipExpiration > NOW() ";
+			"AND puc.membership_expiration > NOW() ";
 		$searchClause = sprintf(
 			$searchClause,
-			$db->escape("%".$filter["search"]."%"),
-			$db->escape($filter["search"]),
-			$db->escape($filter["search"])
+			$db->escape($filter["search"]."%"),
+			$db->escape($filter["search"]."%"),
+			$db->escape($filter["search"]."%")
 		);
 		return $searchClause;
 	}

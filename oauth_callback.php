@@ -100,6 +100,28 @@ $_SESSION['username']   = $userinfo['nickname'] ?? $userinfo['firstName'] ?? '';
 $_SESSION['logged_in']  = true;
 unset($_SESSION['oauth_state']);
 
+// Refresh the local portal_user_cache row so UserList queries stay fast.
+if (!empty($userinfo['membershipNumber'])) {
+    $db->query(
+        "INSERT INTO portal_user_cache
+             (ww_number, first_name, last_name, email, membership_expiration, cached_at)
+         VALUES (?, ?, ?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE
+             first_name            = VALUES(first_name),
+             last_name             = VALUES(last_name),
+             email                 = VALUES(email),
+             membership_expiration = VALUES(membership_expiration),
+             cached_at             = NOW()",
+        [
+            $userinfo['membershipNumber'],
+            $userinfo['firstName']          ?? '',
+            $userinfo['lastName']           ?? '',
+            $userinfo['emailAddress']       ?? '',
+            $userinfo['membershipExpiration'] ?? null,
+        ]
+    );
+}
+
 header("Location: /index.php");
 exit;
 ?>

@@ -6,8 +6,9 @@ include/settings.inc
 revision.log
 vssmove.log
 
-# Database dumps
-*.sql
+# Database dumps (root-level only; sql/ migration files are committed)
+/*.sql
+approvals_2017.sql
 
 # Backups and junk (date-stamped, .bak, .debug, .temp variants)
 *.bak
