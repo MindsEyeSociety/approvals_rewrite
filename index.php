@@ -20,6 +20,8 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
         exit;
     }
     $_SESSION['cam_number'] = $member_number;
+    enforce_early_access();   // early access / phased rollout gate (if $SETTINGS["EARLY_ACCESS_ENABLED"] is true)
+                              // non-whitelisted users (by cam_number vs the "early-access" file) are shown the denial message here
     $_SESSION['user_id'] = getUserID($_SESSION['cam_number']);
     error_log("Point 8: user_id set");
     include_once("session_setup.inc");

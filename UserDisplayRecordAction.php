@@ -1,6 +1,6 @@
 <?php
 $mode=$_POST["mode"];
-$ww_number = strtoupper( $_POST['ww_number'] );
+$ww_number = strtoupper( $_POST['ww_number'] ?? '' );
 $errmsgs=array();
 if ($mode=="doAdd") {
 	if ( count($errmsgs)==0 ) {
@@ -38,7 +38,7 @@ if ($mode=="doAdd") {
     $db->query($query, [$_POST["org_id"], $_POST["id"]]);
 
     if( $_POST["admin_org_id"] ) {
-      if ( $_POST["venue_id"] || $_POST["assistant"] ) {
+      if ( ($_POST["venue_id"] ?? null) || ($_POST["assistant"] ?? null) ) {
         $thisassistant=1;
       } else {
         $thisassistant=0;
@@ -72,7 +72,7 @@ if ($mode=="doAdd") {
       include_once("session_setup.inc");
     }
     if ( sizeof($errmsgs)==0 ) {
-      if ( $_GET['return']=="UserList" ) {
+      if ( ($_GET['return'] ?? '') === "UserList" ) {
         header("Location: UserList.php?" . $message);
         exit();
       } else {

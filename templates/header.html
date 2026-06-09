@@ -5,10 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0d0d1a">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="anathema.css" type="text/css" rel="stylesheet" />
   <title>{$page_title}</title>
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script>
+    // Compatibility shim for the ancient jquery.tooltip.js plugin (2008 era),
+    // which does feature detection like $.browser.msie and was written for jQuery <1.9.
+    // jQuery 3+ removed $.browser entirely. This prevents the "Cannot read properties of undefined (reading 'msie')" error.
+    if (typeof jQuery.browser === 'undefined') {
+      jQuery.browser = { msie: false };
+    }
+  </script>
   <script src="javascript/jquery.tooltip.js"></script>
 </head>
 <body>
@@ -32,11 +40,6 @@
         <option value="colorblind">Colorblind mode</option>
       </select>
     </div>
-  </nav>
-  <main id="content">
-    <div id="header">
-      <h1>{$page_title}</h1>
-    </div>
 <script>
 document.getElementById('menu-toggle').addEventListener('click', function() {
   var s = document.getElementById('sidebar');
@@ -44,15 +47,29 @@ document.getElementById('menu-toggle').addEventListener('click', function() {
   this.setAttribute('aria-expanded', s.classList.contains('open'));
 });
 (function() {
-  var saved = localStorage.getItem('theme') || 'dark';
+  var saved = 'dark';
+  try {
+    saved = localStorage.getItem('theme') || 'dark';
+  } catch (e) {}
   document.body.classList.toggle('colorblind', saved === 'colorblind');
   document.body.classList.toggle('light', saved === 'light');
-  document.getElementById('theme-picker').value = saved;
-  document.getElementById('theme-picker').addEventListener('change', function() {
-    var t = this.value;
-    localStorage.setItem('theme', t);
-    document.body.classList.toggle('colorblind', t === 'colorblind');
-    document.body.classList.toggle('light', t === 'light');
-  });
+  var picker = document.getElementById('theme-picker');
+  if (picker) {
+    picker.value = saved;
+    picker.addEventListener('change', function() {
+      var t = this.value;
+      try {
+        localStorage.setItem('theme', t);
+      } catch (e) {}
+      document.body.classList.toggle('colorblind', t === 'colorblind');
+      document.body.classList.toggle('light', t === 'light');
+    });
+  }
 }());
 </script>
+  </nav>
+  <main id="content">
+    <div id="header">
+      <h1>{$page_title}</h1>
+    </div>
+
