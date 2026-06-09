@@ -72,7 +72,7 @@ if ($mode=="doAdd") {
       include_once("session_setup.inc");
     }
     if ( sizeof($errmsgs)==0 ) {
-      if ( $_GET['return']=="UserList" ) {
+      if ( ($_GET['return'] ?? '') === "UserList" ) {
         header("Location: UserList.php?" . $message);
         exit();
       } else {
