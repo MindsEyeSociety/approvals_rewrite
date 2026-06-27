@@ -215,6 +215,7 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
 	}
 	$app_info->organization = $organizationDAO->readByID( $app_info->org_id );
 
+	$character = null;
 	if( is_numeric( $app_info->character_id ) && $app_info->character_id != 0 ) {
 		$character = $characterDAO->readByID( $app_info->character_id );
 	}
@@ -248,18 +249,20 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
 		$app_info->user_id = $app_info->character->user_id;
 	else
 		$app_info->user_id = $_SESSION['user_id'];
-	$app_info->venue_id = $character->venue_id ;
+	$app_info->venue_id = is_object( $character ) ? $character->venue_id : 0;
 	$app_info->required_approval = "High";
 	$app_info->status = "Pending Low";
 	$app_info->justification = $ThisJustificationBlock;
 	$app_info->active = 1;
-	$app_info->character_sheet = $character->character_sheet;
+	$app_info->character_sheet = is_object( $character ) ? $character->character_sheet : "";
 	$app_info->creation_date = time();
 	$app_info->status_change_date = time();
 	$app_info->update_date = time();
 	$app_info->venue = $venueDAO->readByID( $app_info->venue_id );
-	$character->venue = $venueDAO->readByID( $character->venue_id);
-	$app_info->character = $character;
+	if( is_object( $character ) ) {
+		$character->venue = $venueDAO->readByID( $character->venue_id );
+		$app_info->character = $character;
+	}
 
 } else if( $mode == 'edit' ) {
 	if ( isset( $_POST['approve'] ) ) {
