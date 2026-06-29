@@ -8,6 +8,12 @@ $character->venue_id = $_POST["venue"];
 $character->subtype = $_POST["SubType"];
 $character->active = 1;
 
+// Defaults so the redirect logic below never reads undefined values.
+// $vss_npc / $org_npc are only set in the NPC branch; $redirect may be absent.
+$vss_npc = 0;
+$org_npc = 0;
+$redirect = $_POST["redirect"] ?? "";
+
 if ( preg_match( "/NPC:(-?\d+)/", $_POST["Type"], $matches ) ) {
 	$npc_id = $matches[1];
 	$character->user_id = 0;
@@ -44,14 +50,14 @@ if ( $_POST["name"]=="" ) {
 
 if( $characterDAO->create( $character ) ) {
 	$max_id=$character->id;
-	if ( $_POST["redirect"]=="AppDetails" ) {
+	if ( $redirect=="AppDetails" ) {
 		header( "Location: AppDetails.php?mode=add&char_id=$max_id&appUser_id=$thisuser_id&" );
 	}	elseif( $vss_npc ) {
  		header("Location: ModifyVSSCharacterList1.php");
 	} elseif ( $org_npc ) {
  		header("Location: app_main.php");
 	} else {
- 		header("Location: MoveCharacter.php?char_id=$max_id&redirect=$_POST[redirect]");
+ 		header("Location: MoveCharacter.php?char_id=$max_id&redirect=$redirect");
 	}
 } else {
 	header( "Location: AddCharacter.php?errmsg=1&" );

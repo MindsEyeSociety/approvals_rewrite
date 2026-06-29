@@ -11,11 +11,11 @@
 		"notes=? ".
 		"where id=?";
 	$params = [
-		$_POST[eventname],
+		$_POST["eventname"],
 		$mysqldate,
-		$_POST[xpearned],
-		$_POST[notes],
-		$_POST[id]
+		$_POST["xpearned"],
+		$_POST["notes"],
+		$_POST["id"]
 	];
   } else {
   	$datestamp = strtotime( stripslashes( $_POST["spentdate"] ) );
@@ -27,11 +27,11 @@
 		"notes=? ".
 		"where id=?";
 	$params = [
-		$_POST[itembought],
+		$_POST["itembought"],
 		$mysqldate,
-		$_POST[xpspent],
-		$_POST[notes],
-		$_POST[id]
+		$_POST["xpspent"],
+		$_POST["notes"],
+		$_POST["id"]
 	];
   }
 
