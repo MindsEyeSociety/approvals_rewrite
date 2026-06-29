@@ -1,7 +1,7 @@
 <?php
   include_once("db.inc");
 
-	$modify = $_POST["modify"];
+	$modify = $_POST["modify"] ?? "";
 
 	if ( $_POST["xptype"]=="earned" ) {
 		$thistable="earnedxp";

@@ -28,6 +28,9 @@ notes - text/varchar
 	$spentsort= ( isset($_GET["spentsort"]) ? $_GET["spentsort"] : "spentdate");
 	$earnedinverted= ( isset($_GET["earnedinverted"]) ? 1 : 0);
 	$spentinverted= ( isset($_GET["spentinverted"]) ? 1 : 0);
+	// CSS class applied to the active sort-column header (never assigned a value
+	// historically); default to empty so the header markup emits no undefined-variable warning.
+	$cellclass = "";
 	if ( $earnedsort=="earneddate" xor $earnedinverted ) {
 		$earneddirection="desc";
 	} else {
