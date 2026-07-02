@@ -86,7 +86,7 @@ class GoogleSheetsService {
 		}
 		$token = $this->getAccessToken();
 
-		$values = array( array( "Org Name", "City", "State" ) );
+		$values = array( array( "Name", "City", "State" ) );
 		foreach( $rows as $r ) {
 			$values[] = array(
 				(string)( $r["org_name"] ?? "" ),
