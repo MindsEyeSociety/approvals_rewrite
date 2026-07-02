@@ -68,7 +68,7 @@
 </div>
 <form action="MoveCharacter2.php" method="post">
 <input type="hidden" name="char_id" value="<?php echo $char_id?>">
-<input type="hidden" name="redirect" value="<?php echo $_GET['redirect']?>">
+<input type="hidden" name="redirect" value="<?php echo $_GET['redirect'] ?? ''?>">
 <input type="hidden" name="user_id" value="<?php echo $character->user_id?>">
 <table class="data">
 	<tr>
