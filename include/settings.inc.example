@@ -32,3 +32,14 @@ $SETTINGS["OAUTH_API_URL"]       = "https://portal.modernenigmasociety.org/api/a
 // When false (or key absent), the feature is completely disabled with zero overhead and full normal access for any valid member.
 // The early-access file itself is never created/committed here (user maintains it on the server, like this settings.inc).
 $SETTINGS["EARLY_ACCESS_ENABLED"] = false;
+
+// Google Sheets sync for the public "domains" map (see docs/google-map-sync.md).
+// When enabled, every organization add/edit/delete rewrites the backing Google Sheet from
+// the current active organizations (org_name, city, state). Best-effort: a failure is logged
+// and never blocks the org save.
+$SETTINGS["GOOGLE_MAP_SYNC_ENABLED"] = false;                     // master on/off switch
+// Absolute path to the service-account JSON key. MUST live OUTSIDE the web root (never under
+// the docroot) so it can't be downloaded. Share the target Sheet with the SA's client_email.
+$SETTINGS["GOOGLE_SA_KEY_FILE"]      = "/etc/approvals/google-sa.json";
+$SETTINGS["GOOGLE_MAP_SHEET_ID"]     = "your-google-sheet-id";    // the /spreadsheets/d/<ID>/ value
+$SETTINGS["GOOGLE_MAP_SHEET_TAB"]    = "Sheet1";                   // tab the sync owns (columns A:C)

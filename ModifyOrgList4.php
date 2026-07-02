@@ -32,9 +32,9 @@
 	$params = [
     		$_POST['nation'],
     		$_POST['region'],
-    		$_POST['domain'],
+    		trim($_POST['domain']),
     		$_POST['chapter'],
-    		$_POST['orgName'],
+    		trim($_POST['orgName']),
     		$_POST['city'],
     		$_POST['state'],
     		$_POST['country'],
@@ -46,6 +46,9 @@
     	];
   	$db->query($query, $params);
   }
+  // Keep the public map's Google Sheet in sync (best-effort; never blocks the save).
+  include_once("classes/GoogleSheetsService.php");
+  GoogleSheetsService::syncOrgMap();
   header("Location: ModifyOrgList1.php");
   
 ?>
