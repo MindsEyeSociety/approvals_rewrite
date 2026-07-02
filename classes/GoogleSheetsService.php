@@ -26,7 +26,7 @@ class GoogleSheetsService {
 	/** Sheets API base for a spreadsheet's value ranges. */
 	const SHEETS_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
 	/** The columns this sync owns/overwrites in the target tab. */
-	const COLUMNS = "A:C";
+	const COLUMNS = "A:D";
 
 	/**
 	 * Build the service from the global $SETTINGS (loaded by db.inc).
@@ -71,12 +71,12 @@ class GoogleSheetsService {
 	/**
 	 * Overwrite the target tab with a header row plus one row per organization.
 	 *
-	 * Clears the owned columns (A:C) then writes the fresh matrix, so removed orgs
+	 * Clears the owned columns (A:D) then writes the fresh matrix, so removed orgs
 	 * disappear and the Sheet always matches the DB. The org values are the raw
 	 * UTF-8 bytes stored in the (latin1-declared) columns; json_encode accepts them
 	 * as valid UTF-8.
 	 *
-	 * @param array $rows Rows of ['org_name','city','state'] (associative) from OrganizationDAO::getMapRows().
+	 * @param array $rows Rows of ['org_name','city','state','region_contact'] (associative) from OrganizationDAO::getMapRows().
 	 * @return bool True on success; false (and error_log) if any API call or JSON encode fails.
 	 * @throws \RuntimeException If required settings are missing or the access token cannot be obtained.
 	 */
@@ -86,12 +86,13 @@ class GoogleSheetsService {
 		}
 		$token = $this->getAccessToken();
 
-		$values = array( array( "Name", "City", "State" ) );
+		$values = array( array( "Name", "City", "State", "RST Contact" ) );
 		foreach( $rows as $r ) {
 			$values[] = array(
 				(string)( $r["org_name"] ?? "" ),
 				(string)( $r["city"] ?? "" ),
 				(string)( $r["state"] ?? "" ),
+				(string)( $r["region_contact"] ?? "" ),
 			);
 		}
 
@@ -169,7 +170,6 @@ class GoogleSheetsService {
 		$response = curl_exec( $ch );
 		$httpCode = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
 		$curlErr  = curl_error( $ch );
-		curl_close( $ch );
 
 		if( $curlErr ) {
 			throw new \RuntimeException( "GoogleSheetsService: token cURL error: $curlErr" );
@@ -211,7 +211,6 @@ class GoogleSheetsService {
 		$response = curl_exec( $ch );
 		$httpCode = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
 		$curlErr  = curl_error( $ch );
-		curl_close( $ch );
 
 		if( $curlErr ) {
 			throw new \RuntimeException( "GoogleSheetsService: $method cURL error: $curlErr" );

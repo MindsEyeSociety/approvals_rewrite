@@ -3,15 +3,20 @@
 The public "domains" map is a Google **My Maps** map whose layer reads from a backing Google
 **Sheet**. This app keeps that Sheet in sync with the database: whenever an organization is
 added, edited, or deleted, it rewrites the Sheet from the current active organizations
-(`org_name, city, state`, ordered by name). It authenticates to the Google Sheets API v4 with a
-**service account** and needs no Composer packages (uses PHP's built-in `openssl`, `curl`,
-`json`).
+(`Name, City, State, RST Contact`, ordered by name). It authenticates to the Google Sheets API
+v4 with a **service account** and needs no Composer packages (uses PHP's built-in `openssl`,
+`curl`, `json`).
+
+The **RST Contact** column is the role-based contact email of the region each org sits in (the
+region-level org's `email`, e.g. `wrrst@wr.modernenigmasociety.org`), so every mapped location
+shows a way to reach a storyteller. It is blank for orgs not within a region (nation/globe level).
 
 ## How it works
 
 - `classes/GoogleSheetsService.php` — signs a service-account JWT, exchanges it for an access
-  token, then `clear`s columns `A:C` of the target tab and writes a header + one row per org.
-- `OrganizationDAO::getMapRows()` — `SELECT org_name, city, state FROM organizations WHERE active=1`.
+  token, then `clear`s columns `A:D` of the target tab and writes a header + one row per org.
+- `OrganizationDAO::getMapRows()` — active orgs as `org_name, city, state`, plus `region_contact`
+  (the region-level org's `email`) resolved from each org's globe/nation/region.
 - The org handlers (`ModifyOrgListAddOrg.php`, `ModifyOrgList4.php`, `ModifyOrgList2.php`) call
   `GoogleSheetsService::syncOrgMap()` after their write. It's **best-effort**: any failure is
   logged (`error_log`) and never blocks the org save. Because each call is a full refresh, a
@@ -19,7 +24,7 @@ added, edited, or deleted, it rewrites the Sheet from the current active organiz
 - `utility/sync_org_map.php` — force a full sync (initial seed / cron / manual). Ignores the
   enable flag so it can seed before you flip it on.
 
-The sync **owns columns A:C of the configured tab** and overwrites them on every run. Do not put
+The sync **owns columns A:D of the configured tab** and overwrites them on every run. Do not put
 manually maintained data in those columns; if the Sheet has other content, point
 `GOOGLE_MAP_SHEET_TAB` at a dedicated tab and set the My Maps layer to read from it.
 
