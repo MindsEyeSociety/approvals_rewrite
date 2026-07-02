@@ -15,8 +15,10 @@ shows a way to reach a storyteller. It is blank for orgs not within a region (na
 
 - `classes/GoogleSheetsService.php` — signs a service-account JWT, exchanges it for an access
   token, then `clear`s columns `A:D` of the target tab and writes a header + one row per org.
-- `OrganizationDAO::getMapRows()` — active orgs as `org_name, city, state`, plus `region_contact`
-  (the region-level org's `email`) resolved from each org's globe/nation/region.
+- `OrganizationDAO::getMapRows()` — mappable orgs as `org_name, city, state`, plus `region_contact`
+  (the region-level org's `email`) resolved from each org's globe/nation/region. Only real
+  **domain-level** orgs are included: region/nation/globe entries (empty domain) and virtual/test
+  entries are excluded.
 - The org handlers (`ModifyOrgListAddOrg.php`, `ModifyOrgList4.php`, `ModifyOrgList2.php`) call
   `GoogleSheetsService::syncOrgMap()` after their write. It's **best-effort**: any failure is
   logged (`error_log`) and never blocks the org save. Because each call is a full refresh, a

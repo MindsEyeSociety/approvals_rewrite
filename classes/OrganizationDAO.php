@@ -183,14 +183,15 @@ class OrganizationDAO {
 	}
 
 	/**
-	 * Return the active organizations for the public map, as name/city/state/contact rows.
+	 * Return the mappable organizations for the public map, as name/city/state/contact rows.
 	 *
 	 * This is the dataset pushed to the Google Sheet that backs the domains map
-	 * (see GoogleSheetsService). Only active orgs are included, ordered by name.
-	 * 'region_contact' is the role-based RST contact email of the region the org sits
-	 * in (the region-level org's `email`, e.g. wrrst@wr.modernenigmasociety.org), so the
-	 * map always shows a way to reach someone. It is empty for orgs not within a region
-	 * (nation/globe level).
+	 * (see GoogleSheetsService). Only real, physical **domain-level** orgs are included:
+	 * region/nation/globe entries (empty domain) are excluded, as are virtual games and
+	 * test entries (matched by "virtual"/"test" in the name, or "vir"/"test" in the domain
+	 * code). Ordered by name. 'region_contact' is the role-based RST contact email of the
+	 * region the org sits in (the region-level org's `email`, e.g.
+	 * wrrst@wr.modernenigmasociety.org), so the map always shows a way to reach someone.
 	 *
 	 * @return array List of associative rows with keys 'org_name', 'city', 'state', 'region_contact'.
 	 * @see GoogleSheetsService::syncOrganizations()
@@ -200,7 +201,12 @@ class OrganizationDAO {
 			"(SELECT r.email FROM organizations r " .
 			" WHERE r.globe=o.globe AND r.nation=o.nation AND r.region=o.region " .
 			"   AND r.domain='' AND r.chapter='' AND r.region<>'' LIMIT 1) AS region_contact " .
-			"FROM organizations o WHERE o.active=1 ORDER BY o.org_name";
+			"FROM organizations o " .
+			"WHERE o.active=1 " .
+			"  AND o.domain <> '' " .
+			"  AND o.org_name NOT LIKE '%virtual%' AND o.org_name NOT LIKE '%test%' " .
+			"  AND o.domain   NOT LIKE '%vir%'     AND o.domain   NOT LIKE '%test%' " .
+			"ORDER BY o.org_name";
 		$rs = $this->db->query( $query );
 		return $rs->getAllRows();
 	}
