@@ -1,5 +1,9 @@
 # Secrets — never commit
 include/settings.inc
+# Google service-account key(s) — never commit; on servers keep OUTSIDE the web root
+find-a-game-207620-ddabf9831915.json
+google-sa*.json
+/*.json
 
 # Logs
 *.log
