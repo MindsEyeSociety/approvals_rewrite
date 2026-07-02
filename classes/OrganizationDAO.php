@@ -183,16 +183,24 @@ class OrganizationDAO {
 	}
 
 	/**
-	 * Return the active organizations for the public map, as name/city/state rows.
+	 * Return the active organizations for the public map, as name/city/state/contact rows.
 	 *
 	 * This is the dataset pushed to the Google Sheet that backs the domains map
 	 * (see GoogleSheetsService). Only active orgs are included, ordered by name.
+	 * 'region_contact' is the role-based RST contact email of the region the org sits
+	 * in (the region-level org's `email`, e.g. wrrst@wr.modernenigmasociety.org), so the
+	 * map always shows a way to reach someone. It is empty for orgs not within a region
+	 * (nation/globe level).
 	 *
-	 * @return array List of associative rows with keys 'org_name', 'city', 'state'.
+	 * @return array List of associative rows with keys 'org_name', 'city', 'state', 'region_contact'.
 	 * @see GoogleSheetsService::syncOrganizations()
 	 */
 	function getMapRows() {
-		$query = "SELECT org_name, city, state FROM organizations WHERE active=1 ORDER BY org_name";
+		$query = "SELECT o.org_name, o.city, o.state, " .
+			"(SELECT r.email FROM organizations r " .
+			" WHERE r.globe=o.globe AND r.nation=o.nation AND r.region=o.region " .
+			"   AND r.domain='' AND r.chapter='' AND r.region<>'' LIMIT 1) AS region_contact " .
+			"FROM organizations o WHERE o.active=1 ORDER BY o.org_name";
 		$rs = $this->db->query( $query );
 		return $rs->getAllRows();
 	}
