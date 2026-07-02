@@ -193,7 +193,10 @@ class GoogleSheetsService {
 	 * @throws \RuntimeException On JSON-encode failure, cURL error, or a non-200 response.
 	 */
 	private function apiRequest( $method, $url, $token, array $body ) {
-		$payload = json_encode( $body );
+		// An empty body must serialize to a JSON object "{}" (a valid request message),
+		// not the "[]" that json_encode() produces for an empty PHP array — the Sheets
+		// values:clear endpoint rejects "[]" with "Root element must be a message".
+		$payload = empty( $body ) ? "{}" : json_encode( $body );
 		if( $payload === false ) {
 			throw new \RuntimeException( "GoogleSheetsService: json_encode failed (" . json_last_error_msg() . ")" );
 		}
