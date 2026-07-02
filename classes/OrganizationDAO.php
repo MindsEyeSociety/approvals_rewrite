@@ -181,4 +181,19 @@ class OrganizationDAO {
 		$this->db->query($query, $params);
 		return $this->db->getAllRows();
 	}
+
+	/**
+	 * Return the active organizations for the public map, as name/city/state rows.
+	 *
+	 * This is the dataset pushed to the Google Sheet that backs the domains map
+	 * (see GoogleSheetsService). Only active orgs are included, ordered by name.
+	 *
+	 * @return array List of associative rows with keys 'org_name', 'city', 'state'.
+	 * @see GoogleSheetsService::syncOrganizations()
+	 */
+	function getMapRows() {
+		$query = "SELECT org_name, city, state FROM organizations WHERE active=1 ORDER BY org_name";
+		$rs = $this->db->query( $query );
+		return $rs->getAllRows();
+	}
 }

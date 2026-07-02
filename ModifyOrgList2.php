@@ -6,6 +6,9 @@
   	$placeholders = implode(",", array_fill(0, count($delete_ids), "?"));
   	$query="delete from organizations where id in ($placeholders)";
     $db->query($query, $delete_ids);
+    // Keep the public map's Google Sheet in sync (best-effort; never blocks the delete).
+    include_once("classes/GoogleSheetsService.php");
+    GoogleSheetsService::syncOrgMap();
     header("Location: ModifyOrgList1.php");
 		exit();
 	} else if ( !empty($_POST["modify"]))  {

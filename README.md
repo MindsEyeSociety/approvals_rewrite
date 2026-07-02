@@ -87,6 +87,19 @@ All settings live in `include/settings.inc` (gitignored). See `include/settings.
 | `OAUTH_REDIRECT_URI` | Full URL to `oauth_callback.php` on this server |
 | `OAUTH_TOKEN_URL` | OAuth2 token endpoint (usually the MES Portal) |
 | `OAUTH_API_URL` | OAuth2 user info endpoint |
+| `GOOGLE_MAP_SYNC_ENABLED` | Turn the org→Google Sheet map sync on/off |
+| `GOOGLE_SA_KEY_FILE` | Absolute path to the Google service-account JSON key (**store outside the web root**) |
+| `GOOGLE_MAP_SHEET_ID` | ID of the Sheet that backs the domains map |
+| `GOOGLE_MAP_SHEET_TAB` | Tab the sync owns (columns A:C) |
+
+---
+
+## Google map sync
+
+Organization changes can be pushed to the Google Sheet that backs the public "domains" map
+(Google My Maps). Enabled via the `GOOGLE_*` settings above. Setup, security notes, and the CLI
+seed/re-sync tool (`utility/sync_org_map.php`) are documented in
+[docs/google-map-sync.md](docs/google-map-sync.md).
 
 ---
 
