@@ -133,6 +133,45 @@ function isMemberActive( $user_id ) {
 		return $positions;
 	}
 
+	/**
+	 * Whether the session user is a storyteller-assistant whose primary storyteller is the applicant.
+	 *
+	 * Enforces the handbook rule that an assistant may not resolve a decision in which their primary
+	 * officer has a conflict of interest (here: the primary being the applicant). Used to block final
+	 * approval of an application by an assistant of the applicant. The applicant is treated as the
+	 * assistant's primary via the union of two sources:
+	 *   (A) org tier — a `storytellers` primary (assistant=0) the applicant holds at the same office
+	 *       (organization + venue; NULL/0 venue = org-wide) where the session user is an assistant; and
+	 *   (B) VST tier — the current VST (`vsss.storyteller_id`) of any VSS in an org+venue where the
+	 *       session user holds a venue-scoped assistant position (covers VSTs that exist only on `vsss`).
+	 *
+	 * @param $sessionUserId   The user attempting the approval.
+	 * @param $applicantUserId The owner of the application (applications.user_id).
+	 * @return bool True if the session user is an assistant of the applicant (block final approval).
+	 * @see finalApprovalBlocked()
+	 */
+	function isAssistantToApplicant( $sessionUserId, $applicantUserId ) {
+		// (A) org tier: session is an assistant under a storytellers-primary the applicant holds
+		//     at the same office (org + venue; COALESCE treats NULL/0 venue as org-wide).
+		$qA =
+			"SELECT COUNT(*) AS c FROM storytellers a ".
+			"JOIN storytellers p ON a.organization_id = p.organization_id ".
+			"  AND COALESCE(a.venue_id,0) = COALESCE(p.venue_id,0) ".
+			"WHERE a.user_id = ? AND a.assistant = 1 AND p.user_id = ? AND p.assistant = 0";
+		$row = $this->db->query( $qA, [ $sessionUserId, $applicantUserId ] )->nextRow();
+		if( intval( $row['c'] ) > 0 ) {
+			return true;
+		}
+		// (B) VST tier: session holds a venue-scoped assistant position whose org+venue has a VSS
+		//     the applicant currently runs (vsss.storyteller_id).
+		$qB =
+			"SELECT COUNT(*) AS c FROM storytellers a ".
+			"JOIN vsss v ON v.org_id = a.organization_id AND v.venue_id = a.venue_id ".
+			"WHERE a.user_id = ? AND a.assistant = 1 AND a.venue_id > 0 AND v.storyteller_id = ?";
+		$row = $this->db->query( $qB, [ $sessionUserId, $applicantUserId ] )->nextRow();
+		return intval( $row['c'] ) > 0;
+	}
+
 	function getUserInfo( $id ) {
 		if( is_null( $id ) ) {
 			return( array() );
