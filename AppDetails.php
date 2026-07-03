@@ -108,6 +108,8 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
         exit();
 	} else if ( $mode == "doEdit" ) {
         $changed = array();
+        // No one may give FINAL approval to their own (or their primary storyteller's) application.
+        $blockFinalApproval = finalApprovalBlocked( $app_info->user_id, $_SESSION['user_id'], $userInfoDAO );
         if ( $app_info->venue_id != $_POST['application_venue_id'] ) {
         	$app_info->venue_id = $_POST['application_venue_id'];
 			$changed[] = "Venue Changed";
@@ -117,10 +119,14 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
         	$changed[] = "Category Changed to {$app_info->category}";
         }
         if ( $app_info->status != $_POST['status'] ) {
-			$app_info->setStatus($_POST['status']);
-        	$changed[] = "Status Changed to {$app_info->status}";
-			if ( strtolower($app_info->status) == "denied" ) {
-				$finalcomment = true;
+			if ( $_POST['status'] == "Approved" && $blockFinalApproval ) {
+				// Never final-approve your own (or your primary storyteller's) application; leave unchanged.
+			} else {
+				$app_info->setStatus($_POST['status']);
+	        	$changed[] = "Status Changed to {$app_info->status}";
+				if ( strtolower($app_info->status) == "denied" ) {
+					$finalcomment = true;
+				}
 			}
         }
         if ( $app_info->description != $_POST['description']) {
@@ -267,6 +273,8 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
 } else if( $mode == 'edit' ) {
 	if ( isset( $_POST['approve'] ) ) {
 		$ThisStatus="";
+		// No one may give FINAL approval to their own (or their primary storyteller's) application.
+		$blockFinalApproval = finalApprovalBlocked( $app_info->user_id, $_SESSION['user_id'], $userInfoDAO );
 		if( $app_info->status == "Pending Low" &&
 			( ( $_SESSION['admin_level'] == 'chapter' && !$_SESSION['assistant'] )  ||
 				$_SESSION['admin_level'] == 'domain' ||
@@ -274,7 +282,7 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
 				$_SESSION['admin_level'] == 'nation' ||
 				$_SESSION['admin_level'] == 'globe' ) ) {
           if( $app_info->required_approval == "Low" &&
-              $app_info->user_id != $_SESSION['user_id'] ) {
+              !$blockFinalApproval ) {
             $ThisStatus = "Approved";
           } else {
             $ThisStatus = "Pending Mid";
@@ -287,7 +295,7 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
               $_SESSION['admin_level'] == 'nation' ||
 							$_SESSION['admin_level'] == 'globe' ) ) {
           if( $app_info->required_approval == "Mid" &&
-              $app_info->user_id != $_SESSION['user_id'] ) {
+              !$blockFinalApproval ) {
             $ThisStatus = "Approved";
           } else {
             $ThisStatus = "Pending High";
@@ -300,7 +308,7 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
                      $_SESSION['admin_level'] == 'nation' ||
 										 $_SESSION['admin_level'] == 'globe' ) ) {
           if( $app_info->required_approval == "High" &&
-              $app_info->user_id != $_SESSION['user_id'] )  {
+              !$blockFinalApproval )  {
             $ThisStatus = "Approved";
           } else {
             $ThisStatus = "Pending Top";
@@ -311,15 +319,17 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
 									   $_SESSION['admin_level'] == 'globe' ) /*&&
                    !$_SESSION['assistant']*/ ) {
 			          if( $app_info->required_approval == "Top" &&
-			              $app_info->user_id != $_SESSION['user_id'] )  {
+			              !$blockFinalApproval )  {
 			            $ThisStatus = "Approved";
 			          } else {
 			            $ThisStatus = "Pending Global";
 					}
         } else if( $app_info->status == "Pending Global" &&
-                   ( $_SESSION['admin_level'] == 'globe' ) /*&&
-                   !$_SESSION['assistant'] */) {
-          $ThisStatus = "Approved";
+                   ( $_SESSION['admin_level'] == 'globe' ) ) {
+          if( !$blockFinalApproval ) {
+            $ThisStatus = "Approved";
+          }
+          // else: cannot self/assistant-finalize — leave at Pending Global for another globe ST
         }
         if( $ThisStatus != "" ) {
         	$applicationDAO->updateStatus( $app_info->id, $ThisStatus );
