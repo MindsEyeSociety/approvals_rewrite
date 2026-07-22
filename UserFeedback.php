@@ -19,6 +19,7 @@ active, a yes/no (bit)
 
   include_once("header.inc");
   include_once("titlebar.php");
+  include_once("include/pagination.inc");
 
   // Grab the first message number from the URL
   $first_message = isset( $_GET['msg'] ) ? $_GET['msg'] : 0 ;
@@ -68,9 +69,9 @@ active, a yes/no (bit)
 	$query.="order by active desc, commentdate desc ".
        "limit ?, ?";
   if ( !isset($_GET["ShowAllRecords"]) ) {
-    $result = $db->query($query, [$_SESSION["last_login_date"], $_SESSION["last_login_date"], intval($first_message), intval($msg_display)]);
+    $result = $db->query($query, [$_SESSION["last_login_date"], $_SESSION["last_login_date"], paginationOffset($first_message), intval($msg_display)]);
   } else {
-    $result = $db->query($query, [intval($first_message), intval($msg_display)]);
+    $result = $db->query($query, [paginationOffset($first_message), intval($msg_display)]);
   }
 
 	if ( !isset($_GET["ShowAllRecords"]) ) {

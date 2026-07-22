@@ -31,3 +31,8 @@ templates_c/
 
 # Submodule (managed separately)
 PHP-OAuth2
+
+# PHPUnit (dev-only test framework; fetch the phar via tools/get-phpunit.sh|.ps1)
+/tools/phpunit.phar
+/.phpunit.cache/
+/.phpunit.result.cache

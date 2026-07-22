@@ -80,6 +80,7 @@ if ( isset($_POST['delete'] ) && isset($_POST["id"] ) ) {
 	}
 }
 
+$changed = array();
 if( $mode == 'doAdd' || $mode == 'doEdit' ) {
 	$thissubmitvalue = "Enter New Values";
 
@@ -334,14 +335,14 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
         if( $ThisStatus != "" ) {
         	$applicationDAO->updateStatus( $app_info->id, $ThisStatus );
         	$revisionDAO->insert( new Revision( $app_info->id, $_SESSION["user_id"], "Status set to $ThisStatus" ) );
-        	$emailService->sendChangesEmail( $app_info, $changed );
+        	$emailService->sendChangesEmail( $app_info, implode(", ", $changed) );
         }
         header ( "Location: AppDetails.php?id=$app_info->id&mode=display&message=updatecomplete&" );
         exit();
       } else if ( isset($_POST["reinstate"]) ) {
         $applicationDAO->updateStatus( $app_info->id, "Pending Low" );
         $revisionDAO->insert( new Revision( $app_info->id, $_SESSION["user_id"], "Status set to Pending Low" ) );
-        $emailService->sendChangesEmail( $app_info, $changed );
+        $emailService->sendChangesEmail( $app_info, implode(", ", $changed) );
         header ( "Location: AppDetails.php?id=$app_info->id&mode=display&message=updatecomplete&" );
         exit();
       } else if ( isset($_POST["remove"]) ) {

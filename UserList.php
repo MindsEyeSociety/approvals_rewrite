@@ -4,6 +4,7 @@
 	include_once("header.inc");
 	include_once("titlebar.php");
 	include_once("services/UserService.class.php");
+	include_once("include/pagination.inc");
 
 	$filter = array();
 
@@ -19,7 +20,7 @@
 	}
 
 
-	$filter["skip"]   = isset($_GET["skip"])   ? $_GET["skip"] : "0";
+	$filter["skip"]   = isset($_GET["skip"])   ? paginationOffset($_GET["skip"]) : 0;
 	$filter["sortby"] = isset($_GET["sortby"]) ? $_GET["sortby"] : "Affiliation";
 	$filter["search"] = isset($_GET["search"]) ? $_GET["search"] : "";
 
@@ -121,7 +122,7 @@
 	}
 
 	if ( $filter["skip"] + 20 < $total_users )	{
-		$prevskip=( intval($filter["skip"]/20) - 1 ) * 20 ;
+		$prevskip=( intval($filter["skip"]/20) + 1 ) * 20 ;
 		$prevquery = $basequery . (""==$basequery?"":"&") . "skip=".$prevskip;
 		echo("<a href=\"UserList.php?$prevquery\">></a>\n");
 		$prevskip=intval($total_users/20) * 20 ;

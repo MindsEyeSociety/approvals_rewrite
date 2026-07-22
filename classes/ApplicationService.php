@@ -18,6 +18,19 @@ class ApplicationService {
 		$this->userInfoDAO = $userInfoDAO;
 	}
 
+	/**
+	 * Resolves the user id of the "low storyteller" responsible for approving an application.
+	 *
+	 * Branches on the application's character (when set) or its org (when not):
+	 * - No character_id: the storyteller of the org's parent org.
+	 * - character.vss_id < 0: the storyteller of the org identified by -vss_id.
+	 * - character.vss_id == 0: the storyteller of the character's own org, or, when the
+	 *   character has no org, the storyteller of the owning player's org (looked up via
+	 *   UserInfoDAO::getUserInfo, which returns an associative array).
+	 * - character.vss_id > 0: the storyteller of that VSS.
+	 *
+	 * @return mixed the resolved storyteller's user id
+	 */
 	function getLowST( $application ) {
 		if( $application->character_id == "" ) {
 			$parent_org_id = $this->organizationDAO->getParentOrgID( $application->org_id );
@@ -27,16 +40,16 @@ class ApplicationService {
 
 			if( $character->vss_id < 0 ) {
 				$st_id = $this->organizationDAO->getOrgSTID( 0-$character->vss_id );
-			} else if( $vss_id == 0 ) {
+			} else if( $character->vss_id == 0 ) {
 				if( $character->org_id == 0 ) {
 					$userinfo = $this->userInfoDAO->getUserInfo( $character->user_id );
-					$org_id = $player->org_id;
+					$org_id = $userinfo['org_id'];
 				} else {
 					$org_id = $character->org_id;
 				}
 				$st_id = $this->organizationDAO->getOrgSTID( $org_id );
 			} else {
-				$st_id = $this->vssDAO->getVSSSTID( $vss_id );
+				$st_id = $this->vssDAO->getVSSSTID( $character->vss_id );
 			}
 		}
 		return $st_id;

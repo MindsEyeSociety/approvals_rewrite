@@ -29,7 +29,7 @@
             "Content-Type: text/html\r\n");
     }
   } elseif ( $_GET["Action"]=="Accept" ) {
-	error_log(date('Y-m-d h:i:s').'APPROVED CHAR '.$_GET['character_id'].' USER '.$_SESSION['user_id']."\n",3,'/var/www/html/vssmove.log');
+	error_log(date('Y-m-d h:i:s').'APPROVED CHAR '.$_GET['character_id'].' USER '.$_SESSION['user_id']."\n",3,__DIR__ . '/vssmove.log');
     $db->query("UPDATE characters SET approved_in_vss='1' where id=?", [$char_id]);
     // Email to user saying accepted;
     if( $email_info['email'] != "" && $character_owner_active ) {
