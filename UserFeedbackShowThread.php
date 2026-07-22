@@ -18,6 +18,7 @@ active, a yes/no (bit)
   $pagetitle="Enter User Feedback";
   include_once("header.inc");
   include_once("titlebar.php");
+  include_once("include/pagination.inc");
 
   // Grab the first message number from the URL
   $first_message = isset( $_GET['msg'] ) ? intval($_GET['msg']) : 0 ;
@@ -82,7 +83,7 @@ active, a yes/no (bit)
        "where parent_id=? ".
        "order by active desc, commentdate desc ".
        "limit ?, ?";
-  $res = $db->query($query, [$_GET["id"], $first_message, $msg_display]);
+  $res = $db->query($query, [$_GET["id"], paginationOffset($first_message), $msg_display]);
   $msg_count = 0;
   while ( $row=$res->nextRow() ) {
     $msg_count += 1;

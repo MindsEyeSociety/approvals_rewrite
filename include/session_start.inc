@@ -10,7 +10,4 @@ session_set_cookie_params([
 ]);
 session_name("approvals_2017");
 session_start();
-
-// Debug line (remove after testing)
-error_log("Session started with ID: " . session_id());
 ?>

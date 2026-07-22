@@ -52,7 +52,7 @@
   } 
   
   if( $vss_id != 0 ) {
- 	error_log(date('Y-m-d h:i:s').' CHAR '.$_POST['char_id'].' VSS '.$vss_id.' USER '.$_SESSION['user_id']."\n",3,'/var/www/approvals_2017/vssmove.log');
+ 	error_log(date('Y-m-d h:i:s').' CHAR '.$_POST['char_id'].' VSS '.$vss_id.' USER '.$_SESSION['user_id']."\n",3,__DIR__ . '/vssmove.log');
     $query="UPDATE characters SET vss_id=?, approved_in_vss='0' WHERE id=?";
 	$params = [ $vss_id, $_POST['char_id'] ];
     $db->query($query, $params);

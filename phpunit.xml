@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PHPUnit configuration for approvals_rewrite.
+
+  The project has no composer; PHPUnit is run from a self-contained phar fetched
+  into tools/phpunit.phar (gitignored) via the tools/get-phpunit scripts.
+  Run "php tools/phpunit.phar" for all suites (see tests/README.md).
+
+  Unit tests inject stub doubles for DAOs, so they need no database or settings.inc.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         failOnWarning="true"
+         failOnNotice="true">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

@@ -1,5 +1,6 @@
 <?php
 include_once ("vo/UserVO.class.php");
+include_once("include/pagination.inc");
 
 class UserService {
 	function UserService() {
@@ -26,7 +27,7 @@ class UserService {
 		$query .= sprintf(
 			"ORDER BY lastname, firstname ".
 			"LIMIT %d, 20",
-			(int)$filter["skip"]
+			paginationOffset($filter["skip"])
 		);
 
 		$rs = $db->query($query);
