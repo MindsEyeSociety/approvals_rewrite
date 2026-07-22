@@ -3,7 +3,7 @@
 session_set_cookie_params([
     'lifetime' => 0,                    // expire when browser closes
     'path'     => '/',
-    'domain'   => 'olddb.modernenigmasociety.org',
+    'domain'   => 'legacy.modernenigmasociety.org',
     'secure'   => false,                // false for HTTP testing
     'httponly' => true,
     'samesite' => 'Lax'
