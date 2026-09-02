@@ -48,11 +48,14 @@ class VSSDAO {
 
 	function readVSSByID( $id ) {
 		$vsss = $this->readVSSsByID( array($id) );
-		return $vsss[0];
+		return $vsss[0] ?? null;
 	}
 
 	function readByID( $vss_id ) {
 		$vss = $this->readVSSsByID( array($vss_id) );
+		if( count( $vss ) == 0 ) {
+			return null;
+		}
 		return new VSS(
 			$vss[0]['name'],
 			$vss[0]['email'],

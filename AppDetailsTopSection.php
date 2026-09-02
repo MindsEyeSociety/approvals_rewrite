@@ -18,11 +18,16 @@ if( is_object( $app_info->character ) ) {
 		if( !is_object( $app_info->character->vss ) ) {
 			$app_info->character->vss = $vssDAO->readByID( $app_info->character->vss_id );
 		}
-		$storytellers[] = array(
-			'title' => 'VST',
-			'id'    => $app_info->character->vss->storyteller_id
-		);
-		$vss_org_id = $app_info->character->vss->organization_id;
+		if( is_object( $app_info->character->vss ) ) {
+			$storytellers[] = array(
+				'title' => 'VST',
+				'id'    => $app_info->character->vss->storyteller_id
+			);
+			$vss_org_id = $app_info->character->vss->organization_id;
+		} else {
+			$is_unassigned=true;
+			$vss_org_id = $app_info->org_id;
+		}
 	} elseif ( is_numeric($app_info->character->vss_id) && $app_info->character->vss_id < 0 ) {
 		$vss_org_id = 0-$app_info->character->vss_id;
 		$organization = $organizationDAO->readByID($vss_org_id);
@@ -162,7 +167,9 @@ if ( is_object( $app_info->character ) && strtolower($app_info->character->char_
 		if( !is_object( $app_info->character->vss ) ) {
 			$app_info->character->vss = $vssDAO->readByID( $app_info->character->vss_id );
 		}
-		$storyteller = $userDAO->getUserInfo($app_info->character->vss->storyteller_id);
+		if( is_object( $app_info->character->vss ) ) {
+			$storyteller = $userDAO->getUserInfo($app_info->character->vss->storyteller_id);
+		}
 	} elseif ( $app_info->character->vss_id < 0 ) {
 		$organization= $organizationDAO->readByID( 0-$character->vss_id );
 		$storyteller = $userDAO->getUserInfo( $organization->admin_user_id );
