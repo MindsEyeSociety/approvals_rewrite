@@ -143,7 +143,7 @@
 				$ThisVSS=$row["vss"];
 				$ThisVSS=formatBlockText($ThisVSS );
 			  $ThisVSS=str_replace("\"", "&quot;",$ThisVSS);
-				echo("<span class=\"cs\">$ThisVSS</span>");
+				echo($ThisVSS);
 		?>
 	  </td>
 	</tr>

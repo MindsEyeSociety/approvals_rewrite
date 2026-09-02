@@ -176,21 +176,9 @@ if ( !empty( $_POST['app_number'] ) ) {
 	  if ( $app_info["character_sheet"]=="" ) {
 			echo("<em>(None)</em>");
 		} else {
-			$ThisCS=$app_info["character_sheet"];
-			$ThisCS= str_replace(".&nbsp;",". ",
- 			  str_replace(":&nbsp;",": ",
-   			  str_replace(",&nbsp;", ", ",
-    				  str_replace(chr(9),"&nbsp;&nbsp;&nbsp;&nbsp; ",
-         				str_replace(" ", "&nbsp;",
-       					  str_replace( chr(13), "<br>", $ThisCS )
-       					)
-							)
-						)
-  				)
-  		  );
-		  $quot_ent = chr(38) . "quot;";
-		  $ThisCS=str_replace("\"", $quot_ent, $ThisCS);
-			echo("<span class=\"cs\">$ThisCS</span>");
+			$ThisCS = $app_info["character_sheet"];
+			$ThisCS = str_replace("\"", "&quot;", $ThisCS);
+			echo(formatBlockText($ThisCS));
 		}
 ?>
     </td>

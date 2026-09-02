@@ -110,7 +110,7 @@
 			}
 			?>
 			<?php
-				echo("<div class=\"cs\" id=\"sheet-display\">".formatBlockText($character["character_sheet"])."</div>");
+				echo("<div id=\"sheet-display\">".formatBlockText($character["character_sheet"])."</div>");
 			?>
 		</td>
 	</tr>
@@ -118,9 +118,7 @@
 		<th colspan="7" align="center">Background</th>
 	</tr>
 	<tr>
-		<td colspan="7" align="left"><div class="cs">
-			<?php echo(formatBlockText($character["background"])); ?>
-		</div></td>
+		<td colspan="7" align="left"><?php echo(formatBlockText($character["background"])); ?></td>
 	</tr>
 <?php
 		 $db->query("select * from applications where character_id='$character[id]' order by status desc, id desc");
