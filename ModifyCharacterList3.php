@@ -21,7 +21,7 @@
 
 	// JSON encode for JavaScript
 	$js_subtypes = json_encode($subtypes);
-  if ( $character["user_id"]!=$_SESSION['user_id'] &&
+  if ( $character["user_id"]!=($_SESSION['user_id'] ?? null) &&
   	 	 (empty($_SESSION['admin_vss_list']) ||!in_array( $character['vss_id'], $_SESSION['admin_vss_list'] )) &&
   	 	 (empty($_SESSION['admin_org_list']) || !in_array( -$character['vss_id'], $_SESSION['admin_org_list'] )) &&
   		 (empty($_SESSION['admin_org_list']) || !in_array( $character['org_id'], $_SESSION['admin_org_list'] )) ) {

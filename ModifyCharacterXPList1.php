@@ -51,7 +51,7 @@ notes - text/varchar
   $db->query($query);
   $row=$db->nextRow();
   $character_user_id=$row["user_id"];
-  if ( $_SESSION['user_id']==$character_user_id ) {
+  if ( ($_SESSION['user_id'] ?? null)==$character_user_id ) {
   	$this_user=1;
   } else {
   	$this_user=0;
