@@ -15,6 +15,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <link href="anathema.css" type='text/css' rel='stylesheet'>
   <title><?php echo $pagetitle?></title>
 	<script type="text/javascript">
@@ -142,7 +143,6 @@
 		<?php
 				$ThisVSS=$row["vss"];
 				$ThisVSS=formatBlockText($ThisVSS );
-			  $ThisVSS=str_replace("\"", "&quot;",$ThisVSS);
 				echo($ThisVSS);
 		?>
 	  </td>
