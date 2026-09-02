@@ -25,6 +25,7 @@ header( "Expires: -1" );
 
 include_once("include/ResultSet.class.php");
 include_once("include/Database.class.php");
+require_once("include/text_formatting.inc");
 
 // --- Early access whitelist support (simplest possible implementation) ---
 // Controlled entirely by $SETTINGS["EARLY_ACCESS_ENABLED"] (see settings.inc.example).
@@ -196,17 +197,6 @@ function activateUserPopups() {
 	$o .= "\t\$('a.userLink').tooltip({showURL:false,delay:0,track:true,bodyHandler:function(){return USER_TOOLTIPS[$(this).attr('userid')]}});\n";
 	$o .="});\n</script>";
 	return $o;
-}
-
-// Formats random free text that users enter into something vageuly readable
-// Accounting for HTML vagaries and without using the accursed <pre> tag.
-function formatBlockText( $text ) {
-	$formattedText = nl2br( $text );
-	$formattedText = str_replace("	", "&nbsp;&nbsp;", $formattedText );
-	$formattedText = str_replace(".&nbsp;", ". ", $formattedText);
-	$formattedText = str_replace(chr(9),"&nbsp;&nbsp;&nbsp;&nbsp; ", $formattedText);
-	$formattedText = str_replace(",&nbsp;", ", ", $formattedText);
-	return "<span class=\"cs\">".$formattedText."</span>";
 }
 
 function email_is_google($email){
