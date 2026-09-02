@@ -211,7 +211,14 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
 		$app_info->org_id = $_GET['apporg_id'];
 	} elseif ( is_object( $app_info->character ) && is_numeric($app_info->character->vss_id) && $app_info->character->vss_id > 0 ) {
 		$app_info->character->vss = $vssDAO->readByID( $app_info->character->vss_id );
-		$app_info->org_id = $app_info->character->vss->organization_id;
+		if( is_object( $app_info->character->vss ) ) {
+			$app_info->org_id = $app_info->character->vss->organization_id;
+		} elseif( is_numeric( $app_info->character->org_id ) && $app_info->character->org_id > 0 ) {
+			$app_info->org_id = $app_info->character->org_id;
+		} else {
+			// Use the Org ID of the logged in user
+			$app_info->org_id = $_SESSION['org_id'];
+		}
 	} elseif ( is_object( $app_info->character ) && is_numeric($app_info->character->vss_id) && $app_info->character->vss_id < 0 ) {
 		$app_info->org_id = 0-$app_info->character->vss_id;
 	} elseif( is_object( $app_info->character ) && is_numeric( $app_info->character->org_id ) && $app_info->character->org_id > 0 ) {
