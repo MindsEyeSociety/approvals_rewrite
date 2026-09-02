@@ -9,7 +9,7 @@ $subtype = $_POST['SubType'];
 $character_sheet = $_POST['character_sheet'];
 $background = $_POST['Background'];
 $active = isset($_POST['Active']) && $_POST['Active'] ? "1" : "0";
-$char_dead = $_POST['char_dead'] ? "1" : "0";
+$char_dead = isset($_POST['char_dead']) && $_POST['char_dead'] ? "1" : "0";
 if ( $char_dead ) $active = 0;
 
 if ( isset($_POST["delete"]) ) {

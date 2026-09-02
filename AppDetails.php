@@ -42,7 +42,7 @@ $app_info->venue = $venueDAO->readByID( $app_info->venue_id );
 $app_info->organization = $organizationDAO->readByID( $app_info->org_id );
 if( $app_info->character != null ) {
 	$app_info->character->venue = $venueDAO->readByID( $app_info->character->venue_id);
-	if( $app_info->character->vss > 0 ) {
+	if( $app_info->character->vss_id > 0 ) {
 		$app_info->character->vss = $vssDAO->readByID( $app_info->character->vss_id );
 	} elseif ( $app_info->character->vss_id < 0 ) {
 		$app_info->character->organization = $organizationDAO->readByID( 0 - $app_info->character->vss_id);
