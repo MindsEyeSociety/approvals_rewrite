@@ -80,16 +80,17 @@
 		<td align="center">
 			<select name="localvss_id" size="20">
 <?php
+print( "<option value=\"\">-- Not Selected --</option>" );
 foreach( $localorgs as $localrow ) {
   $thisid= -$localrow["id"];
   $thisextratext="";
   if ( $thisid==$character->vss_id and $thisid!="" ) {
-    $selectedtext=" Selected";
+    $currenttext=" (current)";
 		$character->vss_id = "";
   } else {
-  	$selectedtext="";
+  	$currenttext="";
   }
-  print( "<option value=\"$thisid\" $selectedtext>" );
+  print( "<option value=\"$thisid\">" );
   if( $localrow["org_name"] != "" ) {
     print( "{$localrow["org_name"]} " );
   } else {
@@ -107,7 +108,7 @@ foreach( $localorgs as $localrow ) {
   if ( isset($localrow["storyteller_name"]) && $localrow["storyteller_name"]!="" ) {
     print( " ({$localrow['storyteller_name']})\n" );
   }
-  print( "</option>" );
+  print( "$currenttext</option>" );
 
 }
 
@@ -115,12 +116,12 @@ foreach ( $localvsss as $localrow ) {
   $thisid=$localrow["id"];
   $thisextratext="";
   if ( $thisid==$character->vss_id and $thisid!="" ) {
-    $selectedtext=" Selected";
+    $currenttext=" (current)";
 		$character->vss_id = "";
   } else {
-  	$selectedtext="";
+  	$currenttext="";
   }
-  print( "<option value=\"$thisid\" $selectedtext>" );
+  print( "<option value=\"$thisid\">" );
   if( $localrow["org_name"] != "" ) {
     print( "$localrow[org_name] " );
   } else {
@@ -143,7 +144,7 @@ foreach ( $localvsss as $localrow ) {
   if ( isset($localrow["storyteller_name"]) && $localrow["storyteller_name"]!="" ) {
     print( " 	 ($localrow[storyteller_name])\n" );
   }
-  print( "</option>" );
+  print( "$currenttext</option>" );
 
 }
 ?>
@@ -153,15 +154,16 @@ foreach ( $localvsss as $localrow ) {
 		<td align="center">
 			<select name="totalvss_id" size="20">
 <?php
+print( "<option value=\"\">-- Not Selected --</option>" );
 foreach ( $totalvsss as $totalrow ) {
   $thisid=$totalrow["id"];
   $thisextratext="";
   if ( $thisid==$character->vss_id and $thisid!="" ) {
-    $selectedtext=" Selected";
+    $currenttext=" (current)";
   } else {
-  	$selectedtext="";
+  	$currenttext="";
   }
-  print( "<option value=\"$thisid\" $selectedtext>" );
+  print( "<option value=\"$thisid\">" );
   if( $totalrow["org_name"] != "" ) {
     print( "$totalrow[org_name] " );
   } else {
@@ -183,7 +185,7 @@ foreach ( $totalvsss as $totalrow ) {
   if ( isset($totalrow["storyteller_name"]) && $totalrow["storyteller_name"]!="" ) {
     print( " 	 ($totalrow[storyteller_name])\n" );
 	}
-  print( "</option>\n" );
+  print( "$currenttext</option>\n" );
 }
 ?>
 		 	</select>

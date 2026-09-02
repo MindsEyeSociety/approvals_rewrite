@@ -8,9 +8,11 @@
     $vss_id = $_POST['totalvss_id'];
   }
 
-  $db->query("SELECT c.*, u.id AS player_id FROM characters c ".
-             "LEFT JOIN users u ON u.id = c.user_id ".
-             "WHERE c.id=" . $_POST['char_id']);
+  $query = "SELECT c.*, u.id AS player_id FROM characters c ".
+           "LEFT JOIN users u ON u.id = c.user_id ".
+           "WHERE c.id=?";
+  $params = [ $_POST['char_id'] ];
+  $db->query($query, $params);
   if ( $character = $db->nextRow() ) {
   	if($character['player_id'] == 0)
   	{
