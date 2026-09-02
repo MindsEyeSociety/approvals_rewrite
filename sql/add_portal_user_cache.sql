@@ -3,6 +3,11 @@
 -- via oauth_callback.php. Data may be up to one login-cycle stale, which
 -- is acceptable for an admin-facing list; actual access is still gated by
 -- portal OAuth.
+--
+-- Explicit COLLATE utf8mb4_unicode_ci to match the rest of the schema
+-- (see sql/fix_portal_user_cache_collation.sql for the production fix
+-- this was missing until 2026-09-02, which caused ww_number join
+-- failures against `users`).
 CREATE TABLE IF NOT EXISTS portal_user_cache (
     ww_number             VARCHAR(20)  NOT NULL,
     first_name            VARCHAR(100) DEFAULT NULL,
@@ -15,4 +20,4 @@ CREATE TABLE IF NOT EXISTS portal_user_cache (
     INDEX idx_last_name  (last_name),
     INDEX idx_first_name (first_name),
     INDEX idx_expiry     (membership_expiration)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

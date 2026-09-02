@@ -1,0 +1,25 @@
+-- Fix portal_user_cache's collation to match the rest of the schema.
+--
+-- portal_user_cache (sql/add_portal_user_cache.sql, added 2026-06-09) was
+-- created with CHARSET=utf8mb4 but no explicit COLLATE, so it silently
+-- picked up MySQL 8's server default utf8mb4_0900_ai_ci. The 2026-09-01
+-- latin1->utf8mb4 migration (sql/migrate_latin1_to_utf8mb4.sql) converted
+-- every other table -- including `users` -- to utf8mb4_unicode_ci, and its
+-- header comment incorrectly excluded portal_user_cache as "already
+-- utf8mb4" (true for charset, false for collation). The mismatch between
+-- users.ww_number (utf8mb4_unicode_ci) and portal_user_cache.ww_number
+-- (utf8mb4_0900_ai_ci) makes every `=` join between them throw "Illegal
+-- mix of collations" -- an uncaught mysqli_sql_exception on every load of
+-- UserList.php (services/UserService.class.php lines 23 and 49).
+--
+-- portal_user_cache is a fully disposable, derived cache -- repopulated
+-- nightly by sql/prefill_portal_user_cache.sql and incrementally on every
+-- OAuth login by oauth_callback.php -- so there is no unique data at risk.
+--
+-- CONVERT TO CHARACTER SET rewrites every char/varchar/text column in the
+-- table -- including the PRIMARY KEY (ww_number) and its indexes -- and
+-- rebuilds them as part of this single statement; no separate DROP/ADD
+-- INDEX step is needed. Identical pattern already run successfully
+-- against `users` and 32 other tables in migrate_latin1_to_utf8mb4.sql.
+
+ALTER TABLE portal_user_cache CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
