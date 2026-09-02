@@ -53,9 +53,11 @@ class Database {
         die("<pre>" . $errMsg . "</pre>");
     }
 
-    // Force latin1 charset to match database collation
-    if (!mysqli_set_charset($this->dbh, 'latin1')) {
-        $errMsg = "CRITICAL: mysqli_set_charset('latin1') failed: " . mysqli_error($this->dbh);
+    // Force utf8mb4 charset to match database collation (all tables migrated
+    // from latin1 2026-09-01; must stay in lockstep with the schema charset —
+    // see the utf8mb4 migration in sql/ for context).
+    if (!mysqli_set_charset($this->dbh, 'utf8mb4')) {
+        $errMsg = "CRITICAL: mysqli_set_charset('utf8mb4') failed: " . mysqli_error($this->dbh);
         error_log("Database::__construct – " . $errMsg);
         die("<pre>" . $errMsg . "</pre>");
     }
