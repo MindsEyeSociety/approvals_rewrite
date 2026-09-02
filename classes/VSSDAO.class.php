@@ -54,12 +54,12 @@ class VSSDAO {
 	function readByID( $vss_id ) {
 		$vss = $this->readVSSsByID( array($vss_id) );
 		return new VSS(
-			iconv('ISO-8859-1', 'UTF-8', $vss[0]['name']),
-			iconv('ISO-8859-1', 'UTF-8', $vss[0]['email']),
+			$vss[0]['name'],
+			$vss[0]['email'],
 			$vss[0]['venue_id'],
 			$vss[0]['storyteller_id'],
 			$vss[0]['org_id'],
-			iconv('ISO-8859-1', 'UTF-8', $vss[0]['vss']),
+			$vss[0]['vss'],
 			$vss[0]['id']
 		);
 	}
@@ -124,9 +124,9 @@ class VSSDAO {
 			$vss->venue_id,
 			$vss->organization_id,
 			$vss->storyteller_id,
-			iconv('UTF-8', 'ISO-8859-1//TRANSLIT', $vss->name),
-			iconv('UTF-8', 'ISO-8859-1//TRANSLIT', $vss->email),
-			iconv('UTF-8', 'ISO-8859-1//TRANSLIT', $vss->vss),
+			$vss->name,
+			$vss->email,
+			$vss->vss,
 			time()
 		] );
 		$vss->id = $this->db->getInsertId();
