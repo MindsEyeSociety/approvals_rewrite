@@ -177,7 +177,6 @@ if ( !empty( $_POST['app_number'] ) ) {
 			echo("<em>(None)</em>");
 		} else {
 			$ThisCS = $app_info["character_sheet"];
-			$ThisCS = str_replace("\"", "&quot;", $ThisCS);
 			echo(formatBlockText($ThisCS));
 		}
 ?>

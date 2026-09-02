@@ -1,12 +1,11 @@
 <?php
   include_once("db.inc");
+  require_once("include/vss_selection.inc");
 
-  $vss_id = 0;
-  if ( isset($_POST['localvss_id']) && $_POST['localvss_id'] != "" ) {
-    $vss_id = $_POST['localvss_id'];
-  } elseif ( isset($_POST['totalvss_id']) && $_POST['totalvss_id'] != "" ) {
-    $vss_id = $_POST['totalvss_id'];
-  }
+  $vss_id = resolveVssSelection(
+    isset($_POST['localvss_id']) ? $_POST['localvss_id'] : "",
+    isset($_POST['totalvss_id']) ? $_POST['totalvss_id'] : ""
+  );
 
   $query = "SELECT c.*, u.id AS player_id FROM characters c ".
            "LEFT JOIN users u ON u.id = c.user_id ".
