@@ -46,7 +46,7 @@ class Filter {
 		if( array_key_exists( 'suborgs', $otherFilters ) ) { $changed=true; $this->suborgs = $otherFilters['suborgs']; }
 		if( array_key_exists( 'sortorder', $otherFilters ) ) { $changed=true; $this->sortorder = stripslashes($otherFilters['sortorder']); }
 		if( array_key_exists( 'inverted', $otherFilters ) ) { $changed=true; $this->inverted = $otherFilters['inverted']; }
-		if( array_key_exists( 'required_approval', $otherFilters ) && $otherFilters['required_approval'][0] != "" ) {
+		if( array_key_exists( 'required_approval', $otherFilters ) && ($otherFilters['required_approval'][0] ?? "") != "" ) {
 			$changed=true;
 			$this->required_approval = $otherFilters['required_approval'];
 		}
