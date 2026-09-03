@@ -64,7 +64,7 @@ notes - text/varchar
 	<div class="subhead" align="center"><?php echo $pagetitle?></div>
 	<div class="normalsmall" align="center"><a href="DisplayCharacter.php?char_id=<?php echo $character_id?>&">Return</a> to Character</div>
 <?php	
-	$query= "select e.*, unix_timestamp( earneddate) as timestamp ".
+	$query= "select e.* ".
 			"from earnedxp e ".
 			"where character_id='$character_id' ".
 			"order by $earnedsort $earneddirection";
@@ -74,7 +74,7 @@ notes - text/varchar
   	$earnedxp[]=$row;
   }
 
-	$query= "select s.*, unix_timestamp( spentdate ) as timestamp ".
+	$query= "select s.* ".
 			"from spentxp s ".
 			"where character_id='$character_id' ".
 			"order by $spentsort $spentdirection";
@@ -212,7 +212,7 @@ notes - text/varchar
 		}
 		echo("<td>&nbsp;$row[eventname]</td>\n");
     echo("<td align=\"center\">");
-		echo( strftime( "%a %b %e %Y", $row['timestamp'] ) );
+		echo( strftime( "%a %b %e %Y", strtotime( $row['earneddate'] ) ) );
 		echo("</td>\n");
   	echo("<td align=\"center\">&nbsp;$row[xpearned]</td>\n");
 		echo("<td>&nbsp;$row[notes]</td>\n");
@@ -364,7 +364,7 @@ notes - text/varchar
 		}
   	echo("<td>&nbsp;$row[itembought]</td>\n");
     echo("<td align=\"center\">");
-		echo( strftime( "%a %b %e %Y", $row['timestamp'] ) );
+		echo( strftime( "%a %b %e %Y", strtotime( $row['spentdate'] ) ) );
 		echo("</td>\n");
   	echo("<td align=\"center\">&nbsp;$row[xpspent]</td>\n");
 		echo("<td>&nbsp;$row[notes]</td>\n");

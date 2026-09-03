@@ -7,7 +7,7 @@
 	$thisTable=$_GET["table"];
 	$thisDate = ( $thisTable == "earnedxp" ) ? "earneddate" : "spentdate";
 	
-	$db->query("select *, unix_timestamp($thisDate) as timestamp  from $thisTable where id=$thisModify");
+	$db->query("select * from $thisTable where id=$thisModify");
 	$row = $db->nextRow();
 ?>
 
@@ -30,7 +30,7 @@
 				<input type="text" size="20" name="eventname" value="<?php echo $row["eventname"]?>">
 			</td>
 			<td>
-				<input type="text" size="10" name="earneddate" value="<?php echo strftime( '%x', $row['timestamp'] )?>">
+				<input type="text" size="10" name="earneddate" value="<?php echo strftime( '%x', strtotime( $row['earneddate'] ) )?>">
 			</td>
 			<td>
 				<input type="text" size="2" name="xpearned" value="<?php echo $row["xpearned"]?>">
@@ -58,7 +58,7 @@
 				<input type="text" size="20" name="itembought" value="<?php echo $row["itembought"]?>">
 			</td>
 			<td>
-				<input type="text" size="10" name="spentdate" value="<?php echo strftime( '%x', $row['timestamp'] )?>">
+				<input type="text" size="10" name="spentdate" value="<?php echo strftime( '%x', strtotime( $row['spentdate'] ) )?>">
 			</td>
 			<td>
 				<input type="text" size="2" name="xpspent" value="<?php echo $row["xpspent"]?>">
