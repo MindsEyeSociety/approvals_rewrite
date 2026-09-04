@@ -214,7 +214,7 @@ function isMemberActive( $user_id ) {
 
 		$userInfo = $this->getUserInfo( $userID );
 		$positions = array();
-		if( $userInfo['super_user'] ) {
+		if( $userInfo['super_user'] ?? false ) {
 			$positions[] = "Super User";
 		}
 

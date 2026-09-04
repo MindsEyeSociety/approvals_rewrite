@@ -151,12 +151,12 @@ $_SESSION['admin_level'] = $admin_level;
 $_SESSION['admin_assistant'] = $top_final_organization != null && !$top_final_organization->isHigherThan($top_organization);
 if( $top_organization != null ) {
 	$_SESSION['obj_admin_level'] = $top_organization->getLevel();
-	$_SESSION['admin_level'] = $_SESSION['obj_admin_level']->organization_level;
+	$_SESSION['admin_level'] = $_SESSION['obj_admin_level']->organization_level ?? '';
 	$_SESSION['admin_org_id'] = $top_organization->id;
 }
 if( $top_final_organization != null ) {
 	$_SESSION['obj_max_final_authority_level'] = $top_final_organization->getLevel();
-	$_SESSION['max_final_authority_level'] = $_SESSION['obj_max_final_authority_level']->organization_level;
+	$_SESSION['max_final_authority_level'] = $_SESSION['obj_max_final_authority_level']->organization_level ?? '';
 }
 if(isset($_SESSION['admin_level']) && ($_SESSION['admin_level'] == 'nation' || $_SESSION['admin_level'] == 'region')) $_SESSION['admin_assistant'] = 0;
 $organizationDAO = $daoFactory->getOrganizationDAO();

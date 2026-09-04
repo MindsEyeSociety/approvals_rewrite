@@ -16,11 +16,11 @@
 
 	$localvsss = $vssDAO->readLocalVenueVSSs(
 		$character->venue_id,
-		$userOrganization->globe,
-		$userOrganization->nation,
-		$userOrganization->region,
-		$userOrganization->domain,
-		$userOrganization->chapter
+		$userOrganization->globe ?? null,
+		$userOrganization->nation ?? null,
+		$userOrganization->region ?? null,
+		$userOrganization->domain ?? null,
+		$userOrganization->chapter ?? null
 	);
 	for( $i=0; $i < count($localvsss); $i++ ) {
 		if (!empty($localvsss[$i]['storyteller_id'])) {
@@ -30,11 +30,11 @@
 	}
 
 	$localorgs = $organizationDAO->readLocalOrganizations(
-		$userOrganization->globe,
-		$userOrganization->nation,
-		$userOrganization->region,
-		$userOrganization->domain,
-		$userOrganization->chapter
+		$userOrganization->globe ?? null,
+		$userOrganization->nation ?? null,
+		$userOrganization->region ?? null,
+		$userOrganization->domain ?? null,
+		$userOrganization->chapter ?? null
 	);
 	for( $i = 0; $i < count( $localorgs); $i++ ) {
 		if (!empty($localorgs[$i]['storyteller_id'])) {
