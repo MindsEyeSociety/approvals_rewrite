@@ -4,7 +4,7 @@
 	$db->query("select c.*, v.venue, u.org_id from characters c ".
 	  "left join venues v on c.venue_id = v.id " .
 	  "left join users u on c.user_id = u.id " .
-		"where c.ID='$thisModify' order by name");
+		"where c.ID=? order by name", [$thisModify]);
 	$character = $db->nextRow();
 	$thisVenue=$character["venue_id"];
   if ( $character["user_id"]!=$_SESSION['user_id'] &&

@@ -4,10 +4,10 @@
 	include_once("header.inc");
 	include_once("titlebar.php");
 	$thisModify = $_GET['modify'];
-	$thisTable=$_GET["table"];
+	$thisTable = ($_GET["table"] === "earnedxp") ? "earnedxp" : "spentxp";
 	$thisDate = ( $thisTable == "earnedxp" ) ? "earneddate" : "spentdate";
-	
-	$db->query("select * from $thisTable where id=$thisModify");
+
+	$db->query("select * from $thisTable where id=?", [$thisModify]);
 	$row = $db->nextRow();
 ?>
 

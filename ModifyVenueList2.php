@@ -4,8 +4,8 @@
 	$modify = $_POST["modify"];
 	
 	if ( isset( $_POST["delete"] ) ) {
-		$thisDelete = "(" . implode( ",", $_POST["delete"] ) . ")";
-		$db->query("DELETE FROM venues WHERE id IN $thisDelete");
+		$placeholders = implode(",", array_fill(0, count($_POST["delete"]), "?"));
+		$db->query("DELETE FROM venues WHERE id IN ($placeholders)", $_POST["delete"]);
 		$modifyInDelete = in_array( $modify, $_POST["delete"]);
 	} 
 	if( isset($_POST["modify"]) && !$modifyInDelete ) {

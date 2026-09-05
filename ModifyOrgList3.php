@@ -17,7 +17,7 @@
    }
 
   // Use the org being modified to determine the hierarchy context for the form
-  $db->query("select * from organizations where id='$ThisModify'");
+  $db->query("select * from organizations where id=?", [$ThisModify]);
   $row=$db->nextRow();
   if (!$row) {
     header("Location: ModifyOrgList1.php");
@@ -28,7 +28,7 @@
   $ThisDomain = isset($row["domain"]) ? $row["domain"] : "";
   $ThisChapter = isset($row["chapter"]) ? $row["chapter"] : "";
 
-  $db->query("select * from organizations where id='$ThisModify'");
+  $db->query("select * from organizations where id=?", [$ThisModify]);
 
   $row = $db->nextRow();
   if (!$row) {

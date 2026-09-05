@@ -4,7 +4,7 @@
 	include_once("header.inc");
 	include_once("titlebar.php");
   $thisModify = $_GET["modify"];
-	$db->query("select * from venues where ID='$thisModify'");
+	$db->query("select * from venues where ID=?", [$thisModify]);
   $row = $db->nextRow();
  ?>
 
