@@ -3,10 +3,10 @@
 	$pagetitle="Modify Category";
 include_once('application.inc');
 	$category_id = $_GET['modify'];
-	$db->query(sprintf("SELECT * FROM categories WHERE id=%d", $category_id ) );
+	$db->query("SELECT * FROM categories WHERE id=?", [$category_id]);
 	$category = $db->nextRow();
 
-	$db->query(sprintf("SELECT venue_id FROM category_venue WHERE category_id=%d", $category_id ) );
+	$db->query("SELECT venue_id FROM category_venue WHERE category_id=?", [$category_id]);
 	$venues = array();
 	while( $row = $db->nextRow() ) {
 	  array_push( $venues, $row["venue_id"] );

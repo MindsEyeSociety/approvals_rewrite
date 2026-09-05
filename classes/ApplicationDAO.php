@@ -241,6 +241,7 @@ class ApplicationDAO {
 			$where_params = [$user_id];
 			if ( sizeof($admin_org_venue_list) > 0 ) {
 				foreach( $admin_org_venue_list as $venue_id => $admin_org_list ) {
+					$venue_id = (int)$venue_id;
 					$temp = "create temporary table user_orgids{$venue_id} (orgid int not null, PRIMARY KEY (`orgid`)) ENGINE=Memory";
 					if($echoquery) echo $temp."\n";
 					$this->db->query($temp);

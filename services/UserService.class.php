@@ -22,15 +22,12 @@ class UserService {
 			"LEFT JOIN organizations o ON u.org_id = o.id " .
 			"LEFT JOIN portal_user_cache puc ON u.ww_number = puc.ww_number ";
 
-		$query .= $this->buildSearchClause($filter);
+		list($searchClause, $params) = $this->buildSearchClause($filter);
+		$query .= $searchClause;
+		$query .= "ORDER BY lastname, firstname LIMIT ?, 20";
+		$params[] = paginationOffset($filter["skip"]);
 
-		$query .= sprintf(
-			"ORDER BY lastname, firstname ".
-			"LIMIT %d, 20",
-			paginationOffset($filter["skip"])
-		);
-
-		$rs = $db->query($query);
+		$rs = $db->query($query, $params);
 		$rows = array();
 		while( $row = $rs->nextRow() ) {
 			$row['name'] = $this->buildName( $row['firstname'], $row['lastname'] );
@@ -47,33 +44,28 @@ class UserService {
 			"FROM users u " .
 			"LEFT JOIN organizations o ON u.org_id = o.id " .
 			"LEFT JOIN portal_user_cache puc ON u.ww_number = puc.ww_number ";
-		$countQuery .= $this->buildSearchClause($filter);
-		$db->query($countQuery);
+		list($searchClause, $params) = $this->buildSearchClause($filter);
+		$countQuery .= $searchClause;
+		$db->query($countQuery, $params);
 		$row = $db->nextRow();
 		return $row["usercount"];
 	}
 
 	function buildSearchClause( $filter = array() ) {
-		global $db;
 		if( "" == ($filter["search"] ?? "") ) {
-			return "WHERE puc.membership_expiration > NOW() ";
+			return [ "WHERE puc.membership_expiration > NOW() ", [] ];
 		}
 		// Use prefix LIKE (no leading wildcard) so indexes on ww_number,
 		// last_name, and first_name can be used by the query planner.
 		$searchClause =
 			"WHERE ( ".
-			"  u.ww_number LIKE '%s' ".
-			"  OR puc.last_name LIKE '%s' ".
-			"  OR puc.first_name LIKE '%s' ".
+			"  u.ww_number LIKE ? ".
+			"  OR puc.last_name LIKE ? ".
+			"  OR puc.first_name LIKE ? ".
 			") ".
 			"AND puc.membership_expiration > NOW() ";
-		$searchClause = sprintf(
-			$searchClause,
-			$db->escape($filter["search"]."%"),
-			$db->escape($filter["search"]."%"),
-			$db->escape($filter["search"]."%")
-		);
-		return $searchClause;
+		$like = $filter["search"] . "%";
+		return [ $searchClause, [ $like, $like, $like ] ];
 	}
 
 	function buildName ( $firstname, $lastname ) {
