@@ -12,10 +12,10 @@
 <?php
     echo activateUserPopups();
 
-    $query = "SELECT u.username, u.id " .
-             "FROM users u " .
-             "WHERE u.ww_number='" . $_SESSION['cam_number'] . "'";
-    $res = $db->query("$query");
+    $res = $db->query(
+        "SELECT u.username, u.id FROM users u WHERE u.ww_number=?",
+        [$_SESSION['cam_number']]
+    );
     if ($res->numRows() > 1) {
         while ($user_id = $res->nextRow()) {
             print('<div><a href="index.php?SWAP_ID=' . $user_id['id'] . '">Switch to user: ' . $user_id['username'] . '</a></div>');

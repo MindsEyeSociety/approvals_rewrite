@@ -88,10 +88,10 @@ function userValidForNumber( $id, $camnum ) {
 	if( !is_numeric( $id ) ) {
 		die("INCORRECT USER_ID FOR userValidForNumber FUNCTION - ".$id);
 	}
-	$query="SELECT u.ww_number, u.id ".
-					 "FROM users u	".
-					 "WHERE u.id=$id AND u.ww_number='$camnum'";
-	$res = $db->query("$query" );
+	$res = $db->query(
+		"SELECT u.ww_number, u.id FROM users u WHERE u.id=? AND u.ww_number=?",
+		[$id, $camnum]
+	);
 	if ($res->numRows() > 0) {
 		return true;
 	} else {
