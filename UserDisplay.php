@@ -18,14 +18,17 @@ if ( isset( $_GET["return"] ) ) {
 }
 
   if ( isset($_GET["action"]) && $_GET["action"]=="DeleteST" ) {
+    if ( !isset($_SESSION['user_id']) ) {
+      header("Location: index.php");
+      exit;
+    }
     if ( $_GET['venue_id'] == '' ) {
       $_GET['venue_id'] = 0;
     }
-    $query="DELETE from storytellers ".
-           "where user_id='$_GET[id]' and ".
-            "organization_id='$_GET[organization_id]' ".
-           "and venue_id='$_GET[venue_id]'";
-    $db->query($query);
+    $db->query(
+      "DELETE from storytellers where user_id=? and organization_id=? and venue_id=?",
+      [$_GET['id'], $_GET['organization_id'], $_GET['venue_id']]
+    );
     header( "Location: UserDisplay.php?id=$_GET[id]" );
     exit;
   }
@@ -169,7 +172,7 @@ if ( isset( $_GET["return"] ) ) {
     $orgs[] = $row2;
   }
 
-  $db->query("select org_name from organizations where ID='$row[org_id]'");
+  $db->query("select org_name from organizations where ID=?", [$row['org_id']]);
   while( $row2=$db->nextRow() ) {
     $ThisOrgName=$row2["org_name"];
   }
@@ -232,8 +235,8 @@ if ( $mode!="add" ) {
     $query = "SELECT s.id, s.name, v.venue ".
             "FROM vsss s ".
            "LEFT JOIN venues v ON s.venue_id = v.id ".
-           "WHERE storyteller_id = $row[id]";
-    $db->query( $query );
+           "WHERE storyteller_id = ?";
+    $db->query( $query, [$row['id']] );
     while( $vss = $db->nextRow() ) {
       print( "<tr>\n" );
       print( "<td>VSS: <a href='VSSDetails.php?id=$vss[id]&'>$vss[name]</a></td>\n");
@@ -245,7 +248,7 @@ if ( $mode!="add" ) {
                "organizations o on s.organization_id=o.id left join ".
                "venues v on s.venue_id=v.id left join ".
                "users u on s.user_id=u.id ".
-               "where s.user_id=$row[id]");
+               "where s.user_id=?", [$row['id']]);
     while ( $row2=$db->nextRow() ) {
       if ( $row2["globe"]!="" ) {
         print( "<tr>\n" );
