@@ -12,16 +12,17 @@ class UserInfoDAO {
 	}
 
 	function updateLastLoginDate( $id ) {
-		$query = "UPDATE users SET last_login_date = now() WHERE id=%d";
 		if( isset( $this->_CACHE[$id] ) ) {
 			$this->_CACHE[$id]['last_login_date'] = getdate();
 		}
-		$this->db->query( sprintf( $query, $id ) );
+		$this->db->query( "UPDATE users SET last_login_date = now() WHERE id=?", [$id] );
 	}
 
 	function readApprovalsDBInfo( $id ) {
-		$query = "SELECT ww_number, super_user, org_id, email, name, unix_timestamp(last_login_date) as last_login_date FROM users WHERE id=%d";
-		$res = $this->db->query(sprintf($query,$id));
+		$res = $this->db->query(
+			"SELECT ww_number, super_user, org_id, email, name, unix_timestamp(last_login_date) as last_login_date FROM users WHERE id=?",
+			[$id]
+		);
 		return $res->nextRow();
 	}
 
@@ -31,11 +32,10 @@ class UserInfoDAO {
 	 */
 	function readPortalUserInfo( $memnumber ) {
 		if( $this->portal_db != null ) {
-			$query =
-				"SELECT firstName, lastName, emailAddress " .
-				"FROM User " .
-				"WHERE membershipNumber = '%s'";
-			$res = $this->portal_db->query(sprintf($query,mysqli_escape_string($this->portal_db->dbh,$memnumber)));
+			$res = $this->portal_db->query(
+				"SELECT firstName, lastName, emailAddress FROM User WHERE membershipNumber = ?",
+				[$memnumber]
+			);
 			if( $res !== false && $res->numRows() > 0 ) {
 				return $res->nextRow();
 			}
@@ -61,8 +61,10 @@ function isMemberActiveByWwNumber( $ww_number ) {
         return false;
     }
 
-    $query = "SELECT membershipExpiration FROM User WHERE membershipNumber = '%s'";
-    $res = $this->portal_db->query(sprintf($query, mysqli_escape_string($this->portal_db->dbh, $ww_number)));
+    $res = $this->portal_db->query(
+        "SELECT membershipExpiration FROM User WHERE membershipNumber = ?",
+        [$ww_number]
+    );
     if( $res !== false && $res->numRows() > 0 ) {
         $row = $res->nextRow();
         $expiration = $row['membershipExpiration'];
@@ -92,8 +94,7 @@ function isMemberActive( $user_id ) {
 
 	function getVSTPositions( $userID ) {
 		$positions = array();
-		$query = "SELECT name FROM vsss WHERE storyteller_id=%d";
-		$res = $this->db->query(sprintf($query, $userID));
+		$res = $this->db->query("SELECT name FROM vsss WHERE storyteller_id=?", [$userID]);
 		while( $row = $res->nextRow() ) {
 			$positions[] = "VST for " . $row["name"];
 		}
@@ -108,8 +109,8 @@ function isMemberActive( $user_id ) {
 			"FROM storytellers s ".
 			"LEFT JOIN organizations o ON s.organization_id = o.id ".
 			"LEFT JOIN venues v ON s.venue_id = v.id ".
-			"WHERE s.user_id=%d";
-		$res = $this->db->query(sprintf($query,$userID));
+			"WHERE s.user_id=?";
+		$res = $this->db->query($query, [$userID]);
 		while( $row = $res->nextRow() ) {
 			$position = '';
 			if( $row['assistant'] ) {
@@ -229,8 +230,8 @@ function isMemberActive( $user_id ) {
 		$swap_ids = array();
 		$query="SELECT u.username, u.id ".
 			"FROM users u ".
-			"WHERE u.ww_number='%s'";
-		$res = $this->db->query(sprintf($query, $this->db->escape( $cam_number ) ) );
+			"WHERE u.ww_number=?";
+		$res = $this->db->query($query, [$cam_number]);
 		if ($res->numRows() > 1) {
 			while($swap_id = $res->nextRow()) {
 				$swap_ids[] = $swap_id;
@@ -243,13 +244,13 @@ function isMemberActive( $user_id ) {
 		if( count($organization_ids) == 0 ) {
 			return false;
 		}
+		$placeholders = implode(",", array_fill(0, count($organization_ids), "?"));
 		$query =
 			"SELECT count(*) as matching_users ".
 			"FROM users ".
-			"WHERE id = %d ".
-			"AND org_id in (".str_repeat("%d,",count( $organization_ids )-1 ). "%d".")";
-		$query = call_user_func_array( "sprintf", array_merge((array)$query,(array)$user_id, $organization_ids));
-		$res = $this->db->query($query);
+			"WHERE id = ? ".
+			"AND org_id in ($placeholders)";
+		$res = $this->db->query($query, array_merge([$user_id], $organization_ids));
 		$result = $this->db->nextRow();
 		return $result['matching_users'] > 0;
 	}
@@ -258,13 +259,13 @@ function isMemberActive( $user_id ) {
 		if( count($organization_ids) == 0 ) {
 			return Array();
 		}
+		$placeholders = implode(",", array_fill(0, count($organization_ids), "?"));
 		$query =
 			"SELECT u.id ".
 			"FROM users u ".
 			"INNER JOIN `mes-portal`.User pu ON u.ww_number = pu.membershipNumber AND pu.membershipExpiration > NOW() ".
-			"WHERE u.org_id in (".str_repeat("%d,",count( $organization_ids )-1 ). "%d".")";
-		$query = call_user_func_array( "sprintf", array_merge((array)$query,$organization_ids));
-		$res = $this->db->query($query);
+			"WHERE u.org_id in ($placeholders)";
+		$res = $this->db->query($query, $organization_ids);
 		return $res->getAllRows();
 	}
 }

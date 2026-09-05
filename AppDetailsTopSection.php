@@ -52,15 +52,12 @@ if( is_object( $app_info->character ) ) {
 $affiliation = $organizationDAO->readByID( $vss_org_id );
 
 if( $affiliation->chapter ) {
-	$res = $db->query( sprintf(
+	$res = $db->query(
 		"SELECT admin_user_id ".
 		"FROM organizations ".
-		"WHERE chapter='%s' AND domain='%s' AND region='%s' AND nation='%s'",
-		$db->escape($affiliation->chapter),
-		$db->escape($affiliation->domain),
-		$db->escape($affiliation->region),
-		$db->escape($affiliation->nation)
-	));
+		"WHERE chapter=? AND domain=? AND region=? AND nation=?",
+		[$affiliation->chapter, $affiliation->domain, $affiliation->region, $affiliation->nation]
+	);
 	if( $row=$res->nextRow() && $row['admin_user_id'] != '') {
 		$storytellers[] = array(
   			'title' => 'CST',
@@ -69,13 +66,11 @@ if( $affiliation->chapter ) {
 	}
 }
 if( $affiliation->domain ) {
-	$res = $db->query( sprintf(
+	$res = $db->query(
 		"SELECT admin_user_id FROM organizations o ".
-		"WHERE o.chapter='' and o.domain='%s' and o.region='%s' and o.nation='%s'",
-		$db->escape( $affiliation->domain ),
-		$db->escape( $affiliation->region ),
-		$db->escape( $affiliation->nation )
-	));
+		"WHERE o.chapter='' and o.domain=? and o.region=? and o.nation=?",
+		[$affiliation->domain, $affiliation->region, $affiliation->nation]
+	);
 	if( $row=$res->nextRow() ) {
   		$storytellers[] = array(
   			'title' => 'DST',
@@ -84,12 +79,11 @@ if( $affiliation->domain ) {
 	}
 }
 if( $affiliation->region ) {
-	$res = $db->query( sprintf(
+	$res = $db->query(
 		"SELECT admin_user_id FROM organizations o ".
-		"WHERE o.chapter='' and o.domain='' and o.region='%s' and o.nation='%s'",
-		$db->escape( $affiliation->region ),
-		$db->escape( $affiliation->nation )
-	));
+		"WHERE o.chapter='' and o.domain='' and o.region=? and o.nation=?",
+		[$affiliation->region, $affiliation->nation]
+	);
 	if( $row=$res->nextRow() ) {
  		$storytellers[] = array(
   			'title' => 'RST',
@@ -98,11 +92,11 @@ if( $affiliation->region ) {
 	}
 }
 if( $affiliation->nation ) {
-	$res = $db->query( sprintf(
+	$res = $db->query(
 		"SELECT admin_user_id FROM organizations o ".
-		"WHERE o.chapter='' and o.domain='' and o.region='' and o.nation='%s'",
-		$db->escape( $affiliation->nation )
-	));
+		"WHERE o.chapter='' and o.domain='' and o.region='' and o.nation=?",
+		[$affiliation->nation]
+	);
 	if( $row=$res->nextRow() ) {
  		$storytellers[] = array(
   			'title' => 'NST',
