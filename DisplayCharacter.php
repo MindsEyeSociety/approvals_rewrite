@@ -11,9 +11,10 @@
 				 "vsss s on c.vss_id = s.id left join ".
 				 "organizations o on c.vss_id = -o.id left join ".
 				 "users u on c.user_id=u.id ".
-		     "where c.id='$thischar_id' AND ".
+		     "where c.id=? AND ".
 				 "(".
-				 "u.id='$_SESSION[user_id]' ";
+				 "u.id=? ";
+  $params = [ $thischar_id, $_SESSION['user_id'] ];
   if( sizeof($_SESSION["admin_vss_list"]) > 0 ) {
     $query.="OR c.vss_id in ('" . implode("','",$_SESSION["admin_vss_list"]) . "') ";
 	}
@@ -26,7 +27,7 @@
   $query.=")";
 
 	$query.=" order by name";
-	$db->query($query);
+	$db->query($query, $params);
 	$character = $db->nextRow();
 	foreach($character as $key => $val){
 		$character[$key] = strip_tags($val);
@@ -36,7 +37,10 @@
 		 echo("<div class=\"subhead\" align=\"center\">You do not have access to view this character</div>");
 	} else {
 	  if( $_SESSION['user_id'] != $character['user_id'] ) {
-		  $db->query("INSERT INTO activity_log ( activity_date, character_id, user_id, description ) values ( now(), $thischar_id, $_SESSION[user_id], 'Viewed Character Sheet and Background' )");
+		  $db->query(
+			  "INSERT INTO activity_log ( activity_date, character_id, user_id, description ) values ( now(), ?, ?, 'Viewed Character Sheet and Background' )",
+			  [ $thischar_id, $_SESSION['user_id'] ]
+		  );
 		}
 
 		$isStoryteller = !empty($_SESSION['admin_vss_list']) || !empty($_SESSION['admin_org_list']);

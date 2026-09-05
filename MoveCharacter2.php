@@ -24,11 +24,13 @@
   	}
     if( $character['vss_id'] != $vss_id ) {
       if( $vss_id < 0 ) {
-        $query = "SELECT u.* FROM organizations o LEFT JOIN users u ON u.id = o.admin_user_id WHERE o.id=-1*$vss_id";
+        $query = "SELECT u.* FROM organizations o LEFT JOIN users u ON u.id = o.admin_user_id WHERE o.id=?";
+        $params = [ -1 * (int)$vss_id ];
       } else {
-        $query = "SELECT u.* FROM vsss v LEFT JOIN users u ON u.id = v.storyteller_id WHERE v.id=$vss_id";
+        $query = "SELECT u.* FROM vsss v LEFT JOIN users u ON u.id = v.storyteller_id WHERE v.id=?";
+        $params = [ (int)$vss_id ];
       }
-      $db->query( $query );
+      $db->query( $query, $params );
       if( $storyteller = $db->nextRow() )
       {
  	$user_info = $userInfoDAO->getUserInfo($storyteller['id']);

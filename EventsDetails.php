@@ -10,7 +10,7 @@
                "FROM events e ".
 							 "LEFT JOIN vsss v on e.vss_id=v.id ".
 							 "LEFT JOIN organizations o on -e.vss_id=o.id ".
-               "WHERE e.id=$id");
+               "WHERE e.id=?", [$id]);
     $detailrow=$db->nextRow();
   } else {
     $detailrow=array();

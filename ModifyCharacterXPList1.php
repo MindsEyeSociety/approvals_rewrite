@@ -24,8 +24,10 @@ notes - text/varchar
 */
   include_once("db.inc");
 
-	$earnedsort= ( isset($_GET["earnedsort"]) ? $_GET["earnedsort"] : "earneddate");
-	$spentsort= ( isset($_GET["spentsort"]) ? $_GET["spentsort"] : "spentdate");
+	$earnedsort = in_array($_GET["earnedsort"] ?? '', ['eventname','earneddate','xpearned','notes'], true)
+		? $_GET["earnedsort"] : "earneddate";
+	$spentsort = in_array($_GET["spentsort"] ?? '', ['itembought','spentdate','xpspent','notes'], true)
+		? $_GET["spentsort"] : "spentdate";
 	$earnedinverted= ( isset($_GET["earnedinverted"]) ? 1 : 0);
 	$spentinverted= ( isset($_GET["spentinverted"]) ? 1 : 0);
 	// CSS class applied to the active sort-column header (never assigned a value

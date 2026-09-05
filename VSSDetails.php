@@ -8,8 +8,8 @@
 				 " left join organizations o on v.org_id=o.id".
 				 " left join venues n on v.venue_id=n.id".
 				 " left join users u on v.storyteller_id=u.id".
-		  	 " WHERE v.id='$_GET[id]' ";
-  $res = $db->query($query);
+		  	 " WHERE v.id=? ";
+  $res = $db->query($query, [$_GET['id']]);
 
  ?>
 <!DOCTYPE html>

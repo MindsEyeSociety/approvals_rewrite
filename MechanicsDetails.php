@@ -58,9 +58,9 @@ active, a yes/no (bit)
   $query="SELECT m.*, v.venue ".
 					"FROM mechanics m left join ".
 					"venues v on m.venue_id=v.id ".
-					"WHERE m.id='$_GET[id]' ".
+					"WHERE m.id=? ".
 					"ORDER BY v.id, m.category , m.title";
-  $result = $db->query($query);
+  $result = $db->query($query, [$_GET['id']]);
   $row=$result->nextRow();
 ?>
 
