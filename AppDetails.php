@@ -116,8 +116,13 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
         exit();
 	} else if ( $mode == "doEdit" ) {
         $changed = array();
-        // No one may give FINAL approval to their own (or their primary storyteller's) application.
-        $blockFinalApproval = finalApprovalBlocked( $app_info->user_id, $_SESSION['user_id'], $userInfoDAO );
+        // No one may give FINAL approval to their own application, nor to one pending before an
+        // office they hold only as an assistant to the applicant. The tier in play is the
+        // application's current status; a non-"Pending *" status falls through to
+        // approvalTierRank()'s unrecognised-input safety (rank 5, Global).
+        $doEditTierRank = approvalTierRank( preg_replace( '/^Pending /', '', $app_info->status ) );
+        $doEditAppScope = applicationApprovalScope( $app_info );
+        $blockFinalApproval = finalApprovalBlocked( $app_info->user_id, $_SESSION['user_id'], $userInfoDAO, $doEditAppScope, $doEditTierRank );
         if ( $app_info->venue_id != $_POST['application_venue_id'] ) {
         	$app_info->venue_id = $_POST['application_venue_id'];
 			$changed[] = "Venue Changed";
@@ -288,70 +293,82 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
 } else if( $mode == 'edit' ) {
 	if ( isset( $_POST['approve'] ) ) {
 		$ThisStatus="";
-		// No one may give FINAL approval to their own (or their primary storyteller's) application.
-		$blockFinalApproval = finalApprovalBlocked( $app_info->user_id, $_SESSION['user_id'], $userInfoDAO );
+		// Whether an "Approve" click actually approves, or gets referred instead, now depends on
+		// the capacity-scoped conflict check and the ratchet fix -- see resolveApprovalOutcome().
+		$conflictReferral = false; // true when referred but the status can't move (surface a message instead of updatecomplete)
+		$appApprovalScope = applicationApprovalScope( $app_info );
+		$requiredRank     = approvalTierRank( $app_info->required_approval );
 		if( $app_info->status == "Pending Low" &&
-			( ( $_SESSION['admin_level'] == 'chapter' && !$_SESSION['assistant'] )  ||
+			( ( $_SESSION['admin_level'] == 'chapter' )  ||
 				$_SESSION['admin_level'] == 'domain' ||
 				$_SESSION['admin_level'] == 'region' ||
 				$_SESSION['admin_level'] == 'nation' ||
 				$_SESSION['admin_level'] == 'globe' ) ) {
-          if( $app_info->required_approval == "Low" &&
-              !$blockFinalApproval ) {
-            $ThisStatus = "Approved";
+          $outcome = resolveApprovalOutcome( $app_info, $_SESSION['user_id'], $userInfoDAO, $appApprovalScope, $requiredRank, 1 );
+          if( $outcome['status'] !== null ) {
+            $ThisStatus = $outcome['status'];
           } else {
-            $ThisStatus = "Pending Mid";
+            $conflictReferral = $outcome['referredWithoutChange'];
           }
 
         } else if( $app_info->status == "Pending Mid" &&
-            ( ( $_SESSION['admin_level'] == 'domain' &&
-                !$_SESSION['assistant'] )  ||
+            ( ( $_SESSION['admin_level'] == 'domain' )  ||
               $_SESSION['admin_level'] == 'region' ||
               $_SESSION['admin_level'] == 'nation' ||
 							$_SESSION['admin_level'] == 'globe' ) ) {
-          if( $app_info->required_approval == "Mid" &&
-              !$blockFinalApproval ) {
-            $ThisStatus = "Approved";
+          $outcome = resolveApprovalOutcome( $app_info, $_SESSION['user_id'], $userInfoDAO, $appApprovalScope, $requiredRank, 2 );
+          if( $outcome['status'] !== null ) {
+            $ThisStatus = $outcome['status'];
           } else {
-            $ThisStatus = "Pending High";
+            $conflictReferral = $outcome['referredWithoutChange'];
           }
 
         } else if( $app_info->status == "Pending High" &&
                    ( ( $_SESSION['admin_level'] == 'region'
-//&&!$_SESSION['assistant'] 
+//&&!$_SESSION['assistant']
 		)  ||
                      $_SESSION['admin_level'] == 'nation' ||
 										 $_SESSION['admin_level'] == 'globe' ) ) {
-          if( $app_info->required_approval == "High" &&
-              !$blockFinalApproval )  {
-            $ThisStatus = "Approved";
+          $outcome = resolveApprovalOutcome( $app_info, $_SESSION['user_id'], $userInfoDAO, $appApprovalScope, $requiredRank, 3 );
+          if( $outcome['status'] !== null ) {
+            $ThisStatus = $outcome['status'];
           } else {
-            $ThisStatus = "Pending Top";
+            $conflictReferral = $outcome['referredWithoutChange'];
           }
 
         } else if( $app_info->status == "Pending Top" &&
                    ( $_SESSION['admin_level'] == 'nation' ||
 									   $_SESSION['admin_level'] == 'globe' ) /*&&
                    !$_SESSION['assistant']*/ ) {
-			          if( $app_info->required_approval == "Top" &&
-			              !$blockFinalApproval )  {
-			            $ThisStatus = "Approved";
-			          } else {
-			            $ThisStatus = "Pending Global";
+			      $outcome = resolveApprovalOutcome( $app_info, $_SESSION['user_id'], $userInfoDAO, $appApprovalScope, $requiredRank, 4 );
+			      if( $outcome['status'] !== null ) {
+			        $ThisStatus = $outcome['status'];
+			      } else {
+			        $conflictReferral = $outcome['referredWithoutChange'];
 					}
         } else if( $app_info->status == "Pending Global" &&
                    ( $_SESSION['admin_level'] == 'globe' ) ) {
-          if( !$blockFinalApproval ) {
-            $ThisStatus = "Approved";
+          $outcome = resolveApprovalOutcome( $app_info, $_SESSION['user_id'], $userInfoDAO, $appApprovalScope, $requiredRank, 5 );
+          if( $outcome['status'] !== null ) {
+            $ThisStatus = $outcome['status'];
+          } else {
+            $conflictReferral = $outcome['referredWithoutChange'];
           }
-          // else: cannot self/assistant-finalize — leave at Pending Global for another globe ST
+          // else: cannot self/conflict-finalize — leave at Pending Global for another globe ST
         }
         if( $ThisStatus != "" ) {
         	$applicationDAO->updateStatus( $app_info->id, $ThisStatus );
         	$revisionDAO->insert( new Revision( $app_info->id, $_SESSION["user_id"], "Status set to $ThisStatus" ) );
         	$emailService->sendChangesEmail( $app_info, implode(", ", $changed) );
+        	header ( "Location: AppDetails.php?id=$app_info->id&mode=display&message=updatecomplete&" );
+        } else if ( $conflictReferral ) {
+        	// The click was refused and referred, but the referral target can't move the status
+        	// forward (same-tier supervisor, or beyond Global) -- say so instead of the silent
+        	// "success" of message=updatecomplete on a write that changed nothing.
+        	header ( "Location: AppDetails.php?id=$app_info->id&mode=display&message=conflictofinterest&" );
+        } else {
+        	header ( "Location: AppDetails.php?id=$app_info->id&mode=display&message=updatecomplete&" );
         }
-        header ( "Location: AppDetails.php?id=$app_info->id&mode=display&message=updatecomplete&" );
         exit();
       } else if ( isset($_POST["reinstate"]) ) {
         $applicationDAO->updateStatus( $app_info->id, "Pending Low" );
@@ -398,6 +415,14 @@ include_once("titlebar.php");
 
 <?php if ( isset($_GET['message']) && $_GET["message"]=="deletenotconfirmed" ) { ?>
 	<div class="msgbox error">Delete Not Confirmed</div>
+<?php } ?>
+
+<?php if ( isset($_GET['message']) && $_GET["message"]=="conflictofinterest" ) {
+	// $app_info->status was left unchanged by the referral, so it already names the tier the
+	// application is awaiting -- see resolveApprovalOutcome()'s referredWithoutChange case.
+	$awaitingTier = approvalTierName( approvalTierRank( preg_replace( '/^Pending /', '', $app_info->status ) ) );
+?>
+	<div class="msgbox error">This approval was not applied because of a conflict of interest. The application is still awaiting approval from a different <?php echo htmlspecialchars( $awaitingTier ); ?> officer.</div>
 <?php } ?>
 
 <form action="AppDetails.php" method="post">
