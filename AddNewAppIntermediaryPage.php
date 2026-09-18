@@ -7,7 +7,7 @@ $user_id = isset($_POST['user_id'])?$_POST['user_id']:"";
 if ( is_numeric( $char_id ) ) {
 	$characterDAO = $daoFactory->getCharacterDAO();
 	$character = $characterDAO->readByID( $char_id );
-	header("Location: AppDetails.php?char_id=$char_id&mode=add&appuser_id=$character->user_id&apporg_id=$character->org_id");
+	header("Location: AppDetails.php?char_id=$char_id&mode=add&appuser_id=$character->user_id&apporg_id=$character->org_id&");
 	exit();
 } else {
 	if ( $char_id=="AddNewChar" ) {

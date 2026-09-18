@@ -24,7 +24,14 @@ if ( !isset( $_SESSION['user_id'] ) ) {
 }
 
 /* The Application id could be either from POST or GET or might be zero on a new app */
-$application_id = isset($_GET['id']) ? $_GET['id'] : ( isset($_POST["id"]) ? $_POST["id"]: 0 ) ;
+/* Validate as an int up front - a non-numeric id would otherwise be silently coerced by
+   MySQL to a valid-looking row id, so reject it here and let the existing invalid-access
+   check below handle it. */
+$raw_application_id = isset($_GET['id']) ? $_GET['id'] : ( isset($_POST["id"]) ? $_POST["id"] : 0 );
+$application_id = filter_var( $raw_application_id, FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 0 ) ) );
+if ( $application_id === false ) {
+	$application_id = 0;
+}
 $mode = isset( $_GET['mode'] ) ? $_GET['mode'] :
 		( isset( $_POST['mode'] ) ? $_POST['mode'] : "display");
 $char_id = isset($_GET['char_id']) ? $_GET['char_id'] : 0;

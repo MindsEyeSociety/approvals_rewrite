@@ -149,7 +149,7 @@
 		 	 while ( $approw = $db->nextRow() ) {
           print( "<tr>\n" );
           print( "<td>\n" );
-          print( "<a href=\"AppDetails.php?id=$approw[id]\">$approw[app_number]</a>\n" );
+          print( "<a href=\"AppDetails.php?id=$approw[id]&\">$approw[app_number]</a>\n" );
           print( "</td>\n" );
           print( "<td>\n" );
           print( "$approw[description]\n" );

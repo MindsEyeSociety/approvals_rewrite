@@ -68,7 +68,7 @@ if ( $_POST["mode"] == "doAdd" ) {
 			$emailService->sendCommentEmail( $application, $comment );
 		}
 //		print"<a href=\"AppDetails.php?id=$application->id\">AppDetails.php?id=$application->id</a>";
-		header("Location: AppDetails.php?id=$application->id");
+		header("Location: AppDetails.php?id=$application->id&");
 		exit();
     }
 }
