@@ -177,17 +177,38 @@ SET st.assistant = 0
 WHERE st.venue_id IS NOT NULL
   AND st.assistant = 1;
 
--- STEP 5: The one "review" row already decided by a human.
--- User 55391 is confirmed to be the actual VST of their own venue post
--- at org 673 / venue 45, even though that org is nation/region/globe
--- scoped rather than a plain venue org. Left commented out
--- deliberately -- a human must uncomment and run this explicitly. The
--- other 7 review rows from STEP 2d are NOT decided and must not be
--- touched here. (Kept above the AFTER verification queries so it runs,
--- if enabled, inside the same transaction and before it is verified.)
--- UPDATE storytellers
--- SET assistant = 0
--- WHERE organization_id = 673 AND venue_id = 45 AND user_id = 55391 AND assistant = 1;
+-- STEP 5: Decided "review" rows (national venue posts).
+--
+-- These are venue-scoped posts at a NATION-level org, which the STEP 4
+-- rule cannot confirm on its own: the holder runs the relevant VSS under
+-- a *different* org, so there is no vsss row at this exact org+venue to
+-- vouch for them. Confirmed directly by the National Storyteller:
+--
+--   Alex Cresswell (55391) is the primary officeholder -- venue assigned,
+--   NOT an assistant -- for both of his national venue posts:
+--     org 673 / venue 45  COD - Society of Paranormal Investigators
+--     org 673 / venue 43  VTM - Sabbat 2021: War Never Changes
+--
+--   Rebecca Gearhart (1486) KEEPS assistant = 1 at org 673 / venue 45.
+--   She is his assistant for COD-SPI at national. No statement here: the
+--   row is already assistant = 1 and must stay that way.
+--
+-- This pairing is what makes the conflict-of-interest rule work at Top:
+-- with 55391 primary and 1486 assistant at the same org+venue, she is
+-- barred from final-approving his Top applications and it is referred to
+-- the org-wide NST. If BOTH were set to 0, neither would be an assistant
+-- there and the Top-tier conflict would silently stop firing.
+UPDATE storytellers
+SET assistant = 0
+WHERE organization_id = 673 AND venue_id IN (43, 45) AND user_id = 55391 AND assistant = 1;
+
+-- The remaining 5 review rows from STEP 2d are NOT decided and must not
+-- be touched here:
+--   105   Kevin Tapper  org 673 nation  venue 40  (runs VSS 1226 under org 1200)
+--   53738 Erin Smith    org 673 nation  venue 42  (runs VSS 1256/1261 elsewhere)
+--   53738 Erin Smith    org 16  region  venue 42  (same venue, regional post)
+--   2562  Sean McKeown  org 977 domain  venue 40  (runs VSS 1237 under org 1150)
+--   6985  Loren Reed    org 597 globe   venue 44  (runs VSS 1322 under org 15)
 
 
 -- ----------------------------------------------------------------------------
@@ -196,8 +217,9 @@ WHERE st.venue_id IS NOT NULL
 -- whether to COMMIT or ROLLBACK.
 -- ----------------------------------------------------------------------------
 
--- 6a. Expect exactly 12 venue-scoped primaries now (13 flipped by the
---     UPDATE, minus the 1 duplicate removed by the dedup).
+-- 6a. Expect exactly 14 venue-scoped primaries now: 13 flipped by the
+--     STEP 4 rule minus the 1 duplicate removed by the dedup, plus the
+--     2 national posts decided in STEP 5 (user 55391, venues 43 and 45).
 SELECT COUNT(*) AS venue_scoped_primaries
 FROM storytellers
 WHERE venue_id IS NOT NULL AND assistant = 0;
@@ -212,7 +234,10 @@ HAVING COUNT(*) > 1;
 -- 6c. Expect every venue-scoped row that now has assistant = 0 to
 --     still resolve to a matching vsss.storyteller_id -- i.e. the flip
 --     is still correct and nothing else moved underneath it. Should
---     return the same 12 distinct positions seen in STEP 2c.
+--     return the same 12 distinct positions seen in STEP 2c. NOTE: the
+--     2 national posts decided in STEP 5 will NOT appear here -- they
+--     have no vsss row at that exact org+venue, which is precisely why
+--     they needed a human decision rather than the STEP 4 rule.
 SELECT st.organization_id, st.venue_id, st.user_id, st.assistant, v.id AS vss_id
 FROM storytellers st
 JOIN vsss v
@@ -224,10 +249,10 @@ WHERE st.venue_id IS NOT NULL
 ORDER BY st.organization_id, st.venue_id, st.user_id;
 
 -- 6d. Expect the venue-scoped / assistant = 1 row_count here to be
---     exactly 12 lower than the venue-scoped / assistant = 1
---     row_count from STEP 2a (13 rows flipped, less the 1 duplicate
---     that the dedup already removed from the assistant = 1 pool
---     before the UPDATE ran against it).
+--     exactly 14 lower than the venue-scoped / assistant = 1
+--     row_count from STEP 2a (13 flipped by STEP 4, less the 1 duplicate
+--     the dedup already removed from the assistant = 1 pool, plus the 2
+--     national posts flipped by STEP 5).
 SELECT
   CASE WHEN venue_id IS NULL THEN 'org-wide' ELSE 'venue-scoped' END AS scope,
   assistant,

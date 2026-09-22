@@ -159,6 +159,21 @@ function isMemberActive( $user_id ) {
 		"ELSE 4 END";
 
 	/**
+	 * True hierarchy depth of an org -- chapter=1 .. globe=5 -- deliberately NOT folded the way
+	 * ORG_LEVEL_CASE folds chapter into domain. Used only for ORDER BY: two offices at genuinely
+	 * different depths can both satisfy the folded level filter (a chapter org and a domain org
+	 * both classify as 'domain'), and the more senior one must win deterministically rather than
+	 * being chosen arbitrarily by LIMIT 1.
+	 */
+	private const ORG_HIERARCHY_RANK_CASE =
+		"CASE ".
+		"WHEN o.chapter <> '' THEN 1 ".
+		"WHEN o.domain  <> '' THEN 2 ".
+		"WHEN o.region  <> '' THEN 3 ".
+		"WHEN o.nation  <> '' THEN 4 ".
+		"ELSE 5 END";
+
+	/**
 	 * Which office level and venue-scoping a given approval tier corresponds to. Whitelisted by
 	 * literal `$tierRank` int keys only (1..5); a `$tierRank` that isn't one of these keys yields
 	 * no match, so this array can never be influenced by a caller-supplied value reaching SQL --
@@ -246,9 +261,9 @@ function isMemberActive( $user_id ) {
 
 		// (A) office tier: session is an assistant under a storytellers-primary the applicant
 		//     holds at an office whose level matches the tier (COALESCE treats NULL/0 venue as org-wide).
-		//     ORDER BY venue_scoped ASC makes the pick deterministic when a pair holds BOTH an
-		//     org-wide and a venue-scoped office at this level: the org-wide one wins, because it
-		//     refers higher (org-wide NST -> Global vs venue NST -> the org-wide NST).
+		//     Ordering is by TRUE org hierarchy depth first, then org-wide before venue-scoped, so
+		//     the pick is never arbitrary: a chapter and a domain org both satisfy the folded level
+		//     filter, and a pair can hold both an org-wide and a venue-scoped office at one level.
 		$qA =
 			"SELECT (COALESCE(a.venue_id,0) > 0) AS venue_scoped ".
 			"FROM storytellers a ".
@@ -258,7 +273,7 @@ function isMemberActive( $user_id ) {
 			"WHERE a.user_id = ? AND a.assistant = 1 AND p.user_id = ? AND p.assistant = 0 ".
 			"  AND ".self::ORG_LEVEL_CASE." = ?".
 			$venueClause.
-			" ORDER BY venue_scoped ASC LIMIT 1";
+			" ORDER BY ".self::ORG_HIERARCHY_RANK_CASE." DESC, venue_scoped ASC LIMIT 1";
 		$row = $this->db->query( $qA, [ $sessionUserId, $applicantUserId, $level ] )->nextRow();
 		if ( !empty( $row ) ) {
 			return array(
@@ -319,7 +334,7 @@ function isMemberActive( $user_id ) {
 			"FROM storytellers s ".
 			"JOIN organizations o ON o.id = s.organization_id ".
 			"WHERE s.user_id = ? AND s.assistant = 0 ".
-			"ORDER BY ".self::ORG_LEVEL_RANK_CASE." DESC ".
+			"ORDER BY ".self::ORG_HIERARCHY_RANK_CASE." DESC, (COALESCE(s.venue_id,0) > 0) ASC ".
 			"LIMIT 1";
 		$row = $this->db->query( $qPrimary, [ $userId ] )->nextRow();
 		if ( !empty( $row ) ) {

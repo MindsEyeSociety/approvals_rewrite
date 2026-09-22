@@ -164,10 +164,11 @@ final class UserInfoDAOCoiScopeTest extends \PHPUnit\Framework\TestCase {
 	}
 
 	/**
-	 * Rule A orders its result deterministically, so a pair holding BOTH an org-wide and a
-	 * venue-scoped office at the same level always resolves the same way. Without the ORDER BY,
-	 * LIMIT 1 picks arbitrarily and identical data could refer an application to Top on one run
-	 * and to Global on the next -- org-wide wins, because it refers higher.
+	 * Rule A orders its result deterministically rather than letting LIMIT 1 pick arbitrarily.
+	 * Two things can tie: a chapter org and a domain org both satisfy the folded level filter, and
+	 * a pair can hold both an org-wide and a venue-scoped office at one level. Deeper hierarchy
+	 * wins first, then org-wide, because org-wide refers higher (NST -> Global vs venue NST -> NST).
+	 * Without this, identical data could refer an application to Top on one run and Global on the next.
 	 */
 	public function testRuleAOrdersDeterministicallyPreferringOrgWide(): void {
 		$db = new RecordingDb( [ [], [] ] );
@@ -175,6 +176,7 @@ final class UserInfoDAOCoiScopeTest extends \PHPUnit\Framework\TestCase {
 
 		$dao->applicantConflictOffice( 1486, 55391, [ 'org_id' => 673, 'vss_id' => 0, 'venue_id' => 45 ], 4 );
 
-		$this->assertStringContainsString( 'ORDER BY venue_scoped ASC', $db->queries[0]['sql'] );
+		$this->assertStringContainsString( "ORDER BY CASE", $db->queries[0]["sql"] );
+		$this->assertStringContainsString( "DESC, venue_scoped ASC LIMIT 1", $db->queries[0]["sql"] );
 	}
 }
