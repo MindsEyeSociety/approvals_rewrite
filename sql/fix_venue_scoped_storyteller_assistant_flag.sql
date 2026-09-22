@@ -177,38 +177,62 @@ SET st.assistant = 0
 WHERE st.venue_id IS NOT NULL
   AND st.assistant = 1;
 
--- STEP 5: Decided "review" rows (national venue posts).
+-- STEP 5: Decided "review" rows.
 --
--- These are venue-scoped posts at a NATION-level org, which the STEP 4
--- rule cannot confirm on its own: the holder runs the relevant VSS under
--- a *different* org, so there is no vsss row at this exact org+venue to
--- vouch for them. Confirmed directly by the National Storyteller:
+-- These are venue-scoped posts the STEP 4 rule cannot confirm on its own:
+-- the holder runs the relevant VSS under a *different* org, so no vsss row
+-- exists at this exact org+venue to vouch for them. Each was confirmed
+-- directly by the National Storyteller.
 --
---   Alex Cresswell (55391) is the primary officeholder -- venue assigned,
---   NOT an assistant -- for both of his national venue posts:
---     org 673 / venue 45  COD - Society of Paranormal Investigators
---     org 673 / venue 43  VTM - Sabbat 2021: War Never Changes
+-- 5a. Primary officeholders -- venue assigned, NOT assistants.
 --
---   Rebecca Gearhart (1486) KEEPS assistant = 1 at org 673 / venue 45.
---   She is his assistant for COD-SPI at national. No statement here: the
---   row is already assistant = 1 and must stay that way.
---
--- This pairing is what makes the conflict-of-interest rule work at Top:
--- with 55391 primary and 1486 assistant at the same org+venue, she is
--- barred from final-approving his Top applications and it is referred to
--- the org-wide NST. If BOTH were set to 0, neither would be an assistant
--- there and the Top-tier conflict would silently stop firing.
+--   Alex Cresswell (55391), org 673 United States [nation]
+--     venue 45  COD - Society of Paranormal Investigators
+--     venue 43  VTM - Sabbat 2021: War Never Changes
+--   Kevin Tapper (105), org 673 United States [nation]
+--     venue 40  VTM - Masquerade 2020 : The 13th Hour
+--   Erin Smith (53738), org 673 United States [nation]
+--     venue 42  WTA - Apocalypse 2021: On Frayed Threads
 UPDATE storytellers
 SET assistant = 0
-WHERE organization_id = 673 AND venue_id IN (43, 45) AND user_id = 55391 AND assistant = 1;
+WHERE organization_id = 673 AND assistant = 1
+  AND ( ( user_id = 55391 AND venue_id IN (43, 45) )
+     OR ( user_id = 105   AND venue_id = 40 )
+     OR ( user_id = 53738 AND venue_id = 42 ) );
 
--- The remaining 5 review rows from STEP 2d are NOT decided and must not
--- be touched here:
---   105   Kevin Tapper  org 673 nation  venue 40  (runs VSS 1226 under org 1200)
---   53738 Erin Smith    org 673 nation  venue 42  (runs VSS 1256/1261 elsewhere)
---   53738 Erin Smith    org 16  region  venue 42  (same venue, regional post)
---   2562  Sean McKeown  org 977 domain  venue 40  (runs VSS 1237 under org 1150)
---   6985  Loren Reed    org 597 globe   venue 44  (runs VSS 1322 under org 15)
+-- 5b. Loren Reed (6985) -- wrong ORG, not just the wrong flag.
+-- His row sits at org 597 Global Office, which would give him Global-tier
+-- standing. He is the Regional Storyteller and runs "From the Ashes"
+-- (VSS 1322) at org 15 Great Lakes [region] / venue 44, so the post is
+-- regional. Move the row to org 15 and make it primary. After this the
+-- row satisfies the STEP 4 rule on its own (vss 1322 is at org 15 /
+-- venue 44 with storyteller_id 6985); it is done here only because
+-- STEP 4 has already run by this point.
+-- He has no existing org 15 / venue 44 row, so this creates no duplicate;
+-- his separate org-wide org 15 RST row (venue NULL) is untouched.
+UPDATE storytellers
+SET organization_id = 15, assistant = 0
+WHERE organization_id = 597 AND venue_id = 44 AND user_id = 6985 AND assistant = 1;
+
+-- 5c. Rows deliberately LEFT as assistant = 1.
+--
+--   Rebecca Gearhart (1486), org 673 [nation] / venue 45 COD-SPI.
+--     She is Alex Cresswell's assistant for COD-SPI at national. This
+--     pairing is what makes the conflict rule work at Top: with 55391
+--     primary and 1486 assistant at the same org+venue, she is barred
+--     from final-approving his Top applications and they are referred to
+--     the org-wide NST. Setting BOTH to 0 would leave nobody as an
+--     assistant there and the Top-tier conflict would silently stop
+--     firing. Do not "tidy" this.
+--
+--   Erin Smith (53738), org 16 Northeast Region [region] / venue 42.
+--     She is the assistant Regional Storyteller for Apocalypse. Primary
+--     at national (5a), assistant at regional -- deliberately different.
+--
+--   Sean McKeown (2562), org 977 Children of the Lost Eden / venue 40.
+--     Left alone: org 977 is active = 0 and venue 40 is active = 0, and
+--     someone else (54321) runs the VSS at that office, so an assistant
+--     row is the correct reading. Nothing live depends on it.
 
 
 -- ----------------------------------------------------------------------------
@@ -217,9 +241,9 @@ WHERE organization_id = 673 AND venue_id IN (43, 45) AND user_id = 55391 AND ass
 -- whether to COMMIT or ROLLBACK.
 -- ----------------------------------------------------------------------------
 
--- 6a. Expect exactly 14 venue-scoped primaries now: 13 flipped by the
---     STEP 4 rule minus the 1 duplicate removed by the dedup, plus the
---     2 national posts decided in STEP 5 (user 55391, venues 43 and 45).
+-- 6a. Expect exactly 17 venue-scoped primaries now: 13 flipped by the
+--     STEP 4 rule minus the 1 duplicate removed by the dedup (=12), plus
+--     the 4 national posts in STEP 5a, plus Loren Reed's moved row (5b).
 SELECT COUNT(*) AS venue_scoped_primaries
 FROM storytellers
 WHERE venue_id IS NOT NULL AND assistant = 0;
@@ -234,10 +258,11 @@ HAVING COUNT(*) > 1;
 -- 6c. Expect every venue-scoped row that now has assistant = 0 to
 --     still resolve to a matching vsss.storyteller_id -- i.e. the flip
 --     is still correct and nothing else moved underneath it. Should
---     return the same 12 distinct positions seen in STEP 2c. NOTE: the
---     2 national posts decided in STEP 5 will NOT appear here -- they
+--     return 13 positions: the 12 from STEP 2c plus Loren Reed. NOTE: the
+--     4 national posts decided in STEP 5a will NOT appear here -- they
 --     have no vsss row at that exact org+venue, which is precisely why
---     they needed a human decision rather than the STEP 4 rule.
+--     they needed a human decision. Loren Reed's moved row (5b) WILL
+--     appear, since after the move it does resolve against vss 1322.
 SELECT st.organization_id, st.venue_id, st.user_id, st.assistant, v.id AS vss_id
 FROM storytellers st
 JOIN vsss v
@@ -249,10 +274,10 @@ WHERE st.venue_id IS NOT NULL
 ORDER BY st.organization_id, st.venue_id, st.user_id;
 
 -- 6d. Expect the venue-scoped / assistant = 1 row_count here to be
---     exactly 14 lower than the venue-scoped / assistant = 1
---     row_count from STEP 2a (13 flipped by STEP 4, less the 1 duplicate
---     the dedup already removed from the assistant = 1 pool, plus the 2
---     national posts flipped by STEP 5).
+--     exactly 17 lower than the venue-scoped / assistant = 1 row_count
+--     from STEP 2a (13 flipped by STEP 4, less the 1 duplicate the dedup
+--     already removed from the assistant = 1 pool, plus the 4 national
+--     posts in STEP 5a, plus Loren Reed's moved row in 5b).
 SELECT
   CASE WHEN venue_id IS NULL THEN 'org-wide' ELSE 'venue-scoped' END AS scope,
   assistant,
