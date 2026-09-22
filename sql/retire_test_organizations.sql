@@ -38,8 +38,9 @@
 --
 -- NOT COVERED HERE: test VSSs that live under a REAL org. The clearest case
 -- is vss 1256 "Erin's test venue" at org 597 Global Office. The `vsss` table
--- has no active column, so it cannot be retired this way, and it is handled
--- instead by the name guard in
+-- has no active column, so it cannot be retired this way. That VSS is deleted
+-- outright by sql/delete_test_vss.sql, and is independently excluded from the
+-- storyteller flip by the name guard in
 -- sql/fix_venue_scoped_storyteller_assistant_flag.sql.
 --
 -- Safe to run more than once: the UPDATE is a no-op once active is already 0.
