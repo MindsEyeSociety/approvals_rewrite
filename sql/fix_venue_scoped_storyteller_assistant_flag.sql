@@ -33,10 +33,10 @@
 --      user 1486 at org 990 / venue 36).
 --   2. Flip assistant 1 -> 0 for the venue-scoped rows independently
 --      confirmed as primaries: the user IS vsss.storyteller_id for a
---      VSS at that exact (org_id, venue_id), excluding test VSSs and test
---      orgs. This matches 11 rows / 10 distinct positions (one of the 11 is
---      the duplicate above). Counts are re-derived live by STEP 2c -- trust
---      that over any number written here.
+--      VSS at that exact (org_id, venue_id), excluding test VSSs, test orgs
+--      and INACTIVE orgs. This matches 6 rows / 6 distinct positions.
+--      Counts are re-derived live by STEP 2c -- trust that over any number
+--      written here.
 --   3. Leave alone every org-wide row (venue_id IS NULL), and the 8
 --      "review" rows: venue-scoped posts at nation/region/globe orgs
 --      where the holder runs a VSS at that venue under a *different*
@@ -86,14 +86,14 @@ GROUP BY organization_id, venue_id, user_id, assistant
 HAVING COUNT(*) > 1;
 
 -- 2c. The exact rows the UPDATE (STEP 4) will flip to assistant = 0.
---     Expect 11 rows / 10 distinct positions. The header list was written
---     when 13 rows matched; one of those storytellers rows (53738 at org 597)
---     has since been removed by hand and one more is excluded by STEP 4's
---     test-name guard, leaving 11, with 1486/990/36 still appearing twice
---     for the duplicate.
+--     Expect 6 rows / 6 distinct positions -- Andrew Collins, Erin Smith,
+--     Nate H, Elizabeth James, Chris Martin, James Logue. No duplicate
+--     appears among them: the 1486/990/36 pair is on a retired org and is
+--     excluded by the active filter.
 --     Must mirror STEP 4's WHERE clause exactly -- if you change one,
 --     change the other, or this preview stops telling the truth.
-SELECT st.organization_id, st.venue_id, st.user_id, st.assistant, v.id AS vss_id, v.name AS vss_name
+SELECT st.organization_id, o.org_name, st.venue_id, st.user_id, st.assistant,
+       v.id AS vss_id, v.name AS vss_name
 FROM storytellers st
 JOIN vsss v
   ON v.org_id = st.organization_id
@@ -105,9 +105,32 @@ WHERE st.venue_id IS NOT NULL
   AND st.assistant = 1
   AND v.name NOT LIKE '%test%'
   AND COALESCE(o.org_name, '') NOT LIKE '%test%'
+  AND COALESCE(o.active, 0) = 1
 ORDER BY st.organization_id, st.venue_id, st.user_id;
 
--- 2c-ii. The rows the test guard EXCLUDES. Expect exactly 1 today: user
+-- 2c-ii. Rows excluded because the ORGANIZATION is inactive. Expect 5:
+--     Rebecca Gearhart x2 (org 990 Eden Theatrical Society), David Singleton
+--     (org 999 Gaslight Memories), Sean McKeown (org 1150 Die Unrelenting),
+--     Andrew Fowler (org 1031 Lone Star Nights). These are real people whose
+--     VST post is genuine, but the domain is retired, so flipping them would
+--     grant live authority off dead structure.
+SELECT st.organization_id, o.org_name, o.active AS org_active, st.venue_id,
+       st.user_id, v.id AS vss_id, v.name AS vss_name
+FROM storytellers st
+JOIN vsss v
+  ON v.org_id = st.organization_id
+ AND v.venue_id = st.venue_id
+ AND v.storyteller_id = st.user_id
+LEFT JOIN organizations o
+  ON o.id = st.organization_id
+WHERE st.venue_id IS NOT NULL
+  AND st.assistant = 1
+  AND v.name NOT LIKE '%test%'
+  AND COALESCE(o.org_name, '') NOT LIKE '%test%'
+  AND COALESCE(o.active, 0) <> 1
+ORDER BY st.organization_id, st.venue_id, st.user_id;
+
+-- 2c-iii. Rows excluded by the TEST-NAME guard. Expect exactly 1 today: user
 --     1745522 at org 1213 Test Domain / venue 45, which would otherwise have
 --     been flipped to primary. A second row (53738 at org 597 Global Office /
 --     venue 42, vss "Erin's test venue") was excluded when the guard was
@@ -211,8 +234,28 @@ DROP TEMPORARY TABLE storytellers_dedup;
 -- Matched on VSS and ORGANIZATION names only, never on member names:
 -- "Donny Tester" and "Sherri Teston" are real members whose surnames
 -- contain "test", and must not be swept up by this.
--- LEFT JOIN + COALESCE so a storytellers row pointing at a missing
--- organizations row is still flipped rather than silently skipped.
+--
+-- Inactive organizations are excluded as well. Flipping a row to primary
+-- grants live final-approval authority -- session_setup.inc's
+-- getStorytellerOrganizations() reads storytellers rows with no active
+-- filter at all -- so a retired domain would confer real authority off dead
+-- structure. This drops 5 rows: Rebecca Gearhart x2 (org 990 Eden Theatrical
+-- Society), David Singleton (org 999 Gaslight Memories), Sean McKeown
+-- (org 1150 Die Unrelenting) and Andrew Fowler (org 1031 Lone Star Nights).
+--
+-- NOTE the filter is on the ORGANIZATION only, not the venue. Four rows that
+-- survive it sit on a RETIRED venue at an active org -- Nate H (venue 40),
+-- Elizabeth James and James Logue (venue 41), Chris Martin (venue 35). That
+-- is deliberate and was decided explicitly; adding
+--   AND COALESCE(ve.active, 0) = 1
+-- against a join on `venues` would reduce the flip to the 2 rows that are
+-- live on both counts.
+--
+-- COALESCE(o.active, 0) means a storytellers row pointing at a MISSING
+-- organizations row is treated as inactive and skipped -- we cannot confirm
+-- such an org is live, and not granting authority is the safe direction.
+-- 13 storytellers rows currently have no matching organizations row; none of
+-- them are in this flip set today.
 UPDATE storytellers st
 JOIN vsss v
   ON v.org_id = st.organization_id
@@ -224,7 +267,8 @@ SET st.assistant = 0
 WHERE st.venue_id IS NOT NULL
   AND st.assistant = 1
   AND v.name NOT LIKE '%test%'
-  AND COALESCE(o.org_name, '') NOT LIKE '%test%';
+  AND COALESCE(o.org_name, '') NOT LIKE '%test%'
+  AND COALESCE(o.active, 0) = 1;
 
 -- STEP 5: Decided "review" rows.
 --
@@ -290,9 +334,10 @@ WHERE organization_id = 597 AND venue_id = 44 AND user_id = 6985 AND assistant =
 -- whether to COMMIT or ROLLBACK.
 -- ----------------------------------------------------------------------------
 
--- 6a. Expect exactly 15 venue-scoped primaries now: 11 flipped by the
---     STEP 4 rule minus the 1 duplicate removed by the dedup (=10), plus
---     the 4 national posts in STEP 5a, plus Loren Reed's moved row (5b).
+-- 6a. Expect exactly 11 venue-scoped primaries now: 6 flipped by the STEP 4
+--     rule (no duplicate among them -- the duplicated pair is on a retired
+--     org and was excluded), plus the 4 national posts in STEP 5a, plus
+--     Loren Reed's moved row (5b).
 SELECT COUNT(*) AS venue_scoped_primaries
 FROM storytellers
 WHERE venue_id IS NOT NULL AND assistant = 0;
@@ -307,7 +352,7 @@ HAVING COUNT(*) > 1;
 -- 6c. Expect every venue-scoped row that now has assistant = 0 to
 --     still resolve to a matching vsss.storyteller_id -- i.e. the flip
 --     is still correct and nothing else moved underneath it. Should
---     return 11 positions: the 10 from STEP 2c plus Loren Reed. NOTE: the
+--     return 7 positions: the 6 from STEP 2c plus Loren Reed. NOTE: the
 --     4 national posts decided in STEP 5a will NOT appear here -- they
 --     have no vsss row at that exact org+venue, which is precisely why
 --     they needed a human decision. Loren Reed's moved row (5b) WILL
@@ -323,10 +368,10 @@ WHERE st.venue_id IS NOT NULL
 ORDER BY st.organization_id, st.venue_id, st.user_id;
 
 -- 6d. Expect the venue-scoped / assistant = 1 row_count here to be
---     exactly 16 lower than the venue-scoped / assistant = 1 row_count
---     from STEP 2a: 15 rows flipped in total (10 by STEP 4 after dedup and
---     the test guard, 4 in STEP 5a, 1 in STEP 5b) plus the 1 duplicate the
---     dedup removed from the assistant = 1 pool.
+--     exactly 12 lower than the venue-scoped / assistant = 1 row_count
+--     from STEP 2a: 11 rows flipped in total (6 by STEP 4, 4 in STEP 5a,
+--     1 in STEP 5b) plus the 1 duplicate the dedup removed from the
+--     assistant = 1 pool.
 SELECT
   CASE WHEN venue_id IS NULL THEN 'org-wide' ELSE 'venue-scoped' END AS scope,
   assistant,
