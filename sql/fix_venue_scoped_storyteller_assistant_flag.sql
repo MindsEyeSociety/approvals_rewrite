@@ -33,8 +33,9 @@
 --      user 1486 at org 990 / venue 36).
 --   2. Flip assistant 1 -> 0 for the venue-scoped rows independently
 --      confirmed as primaries: the user IS vsss.storyteller_id for a
---      VSS at that exact (org_id, venue_id), excluding test VSSs, test orgs
---      and INACTIVE orgs. This matches 6 rows / 6 distinct positions.
+--      VSS at that exact (org_id, venue_id), excluding test VSSs, test orgs,
+--      and anything on a retired organization or retired venue. This matches
+--      2 rows / 2 distinct positions.
 --      Counts are re-derived live by STEP 2c -- trust that over any number
 --      written here.
 --   3. Leave alone every org-wide row (venue_id IS NULL), and the 8
@@ -86,10 +87,10 @@ GROUP BY organization_id, venue_id, user_id, assistant
 HAVING COUNT(*) > 1;
 
 -- 2c. The exact rows the UPDATE (STEP 4) will flip to assistant = 0.
---     Expect 6 rows / 6 distinct positions -- Andrew Collins, Erin Smith,
---     Nate H, Elizabeth James, Chris Martin, James Logue. No duplicate
---     appears among them: the 1486/990/36 pair is on a retired org and is
---     excluded by the active filter.
+--     Expect 2 rows / 2 distinct positions -- Andrew Collins (org 1162
+--     Sundered Lands) and Erin Smith (org 1201 NEwhere), both on venue 42
+--     Apocalypse, the only two live on both org and venue. No duplicate
+--     appears among them.
 --     Must mirror STEP 4's WHERE clause exactly -- if you change one,
 --     change the other, or this preview stops telling the truth.
 SELECT st.organization_id, o.org_name, st.venue_id, st.user_id, st.assistant,
@@ -101,20 +102,27 @@ JOIN vsss v
  AND v.storyteller_id = st.user_id
 LEFT JOIN organizations o
   ON o.id = st.organization_id
+LEFT JOIN venues ve
+  ON ve.id = st.venue_id
 WHERE st.venue_id IS NOT NULL
   AND st.assistant = 1
   AND v.name NOT LIKE '%test%'
   AND COALESCE(o.org_name, '') NOT LIKE '%test%'
   AND COALESCE(o.active, 0) = 1
+  AND COALESCE(ve.active, 0) = 1
 ORDER BY st.organization_id, st.venue_id, st.user_id;
 
--- 2c-ii. Rows excluded because the ORGANIZATION is inactive. Expect 5:
---     Rebecca Gearhart x2 (org 990 Eden Theatrical Society), David Singleton
---     (org 999 Gaslight Memories), Sean McKeown (org 1150 Die Unrelenting),
---     Andrew Fowler (org 1031 Lone Star Nights). These are real people whose
---     VST post is genuine, but the domain is retired, so flipping them would
---     grant live authority off dead structure.
-SELECT st.organization_id, o.org_name, o.active AS org_active, st.venue_id,
+-- 2c-ii. Rows excluded because the ORGANIZATION or the VENUE is inactive.
+--     Expect 9 -- 5 dropped by the org filter, 4 more by the venue filter.
+--     All are real people whose VST post is genuine; the structure they sit
+--     on has been retired, so flipping the flag would change nothing except
+--     handing out live approval authority.
+--       org retired : Rebecca Gearhart x2 (990), David Singleton (999),
+--                     Sean McKeown (1150), Andrew Fowler (1031)
+--       venue retired: Nate H (v40), Chris Martin (v35),
+--                     Elizabeth James (v41), James Logue (v41)
+SELECT st.organization_id, o.org_name, o.active AS org_active,
+       st.venue_id, ve.venue, ve.active AS venue_active,
        st.user_id, v.id AS vss_id, v.name AS vss_name
 FROM storytellers st
 JOIN vsss v
@@ -123,11 +131,14 @@ JOIN vsss v
  AND v.storyteller_id = st.user_id
 LEFT JOIN organizations o
   ON o.id = st.organization_id
+LEFT JOIN venues ve
+  ON ve.id = st.venue_id
 WHERE st.venue_id IS NOT NULL
   AND st.assistant = 1
   AND v.name NOT LIKE '%test%'
   AND COALESCE(o.org_name, '') NOT LIKE '%test%'
-  AND COALESCE(o.active, 0) <> 1
+  AND ( COALESCE(o.active, 0) <> 1 OR COALESCE(ve.active, 0) <> 1 )
+ORDER BY o.active, ve.active, st.organization_id, st.venue_id, st.user_id;
 ORDER BY st.organization_id, st.venue_id, st.user_id;
 
 -- 2c-iii. Rows excluded by the TEST-NAME guard. Expect exactly 1 today: user
@@ -143,6 +154,8 @@ JOIN vsss v
  AND v.storyteller_id = st.user_id
 LEFT JOIN organizations o
   ON o.id = st.organization_id
+LEFT JOIN venues ve
+  ON ve.id = st.venue_id
 WHERE st.venue_id IS NOT NULL
   AND st.assistant = 1
   AND ( v.name LIKE '%test%' OR COALESCE(o.org_name, '') LIKE '%test%' )
@@ -235,27 +248,38 @@ DROP TEMPORARY TABLE storytellers_dedup;
 -- "Donny Tester" and "Sherri Teston" are real members whose surnames
 -- contain "test", and must not be swept up by this.
 --
--- Inactive organizations are excluded as well. Flipping a row to primary
--- grants live final-approval authority -- session_setup.inc's
--- getStorytellerOrganizations() reads storytellers rows with no active
--- filter at all -- so a retired domain would confer real authority off dead
--- structure. This drops 5 rows: Rebecca Gearhart x2 (org 990 Eden Theatrical
--- Society), David Singleton (org 999 Gaslight Memories), Sean McKeown
--- (org 1150 Die Unrelenting) and Andrew Fowler (org 1031 Lone Star Nights).
+-- Retired structure is excluded too -- both the ORGANIZATION and the VENUE
+-- must be active. Flipping a row to primary grants live final-approval
+-- authority (session_setup.inc's getStorytellerOrganizations() reads
+-- storytellers rows with no active filter at all), so a retired domain or a
+-- retired venue would confer real authority off dead structure for no
+-- benefit. Nothing is pending on either, so nothing is lost by skipping them.
 --
--- NOTE the filter is on the ORGANIZATION only, not the venue. Four rows that
--- survive it sit on a RETIRED venue at an active org -- Nate H (venue 40),
--- Elizabeth James and James Logue (venue 41), Chris Martin (venue 35). That
--- is deliberate and was decided explicitly; adding
---   AND COALESCE(ve.active, 0) = 1
--- against a join on `venues` would reduce the flip to the 2 rows that are
--- live on both counts.
+-- Inactive ORGANIZATION drops 5 rows:
+--   Rebecca Gearhart x2  org 990  Eden Theatrical Society
+--   David Singleton      org 999  Gaslight Memories
+--   Sean McKeown         org 1150 Die Unrelenting
+--   Andrew Fowler        org 1031 Lone Star Nights
+-- Note the duplicated 1486/990/36 pair is among these, so the surviving flip
+-- set contains no duplicate at all.
 --
--- COALESCE(o.active, 0) means a storytellers row pointing at a MISSING
--- organizations row is treated as inactive and skipped -- we cannot confirm
--- such an org is live, and not granting authority is the safe direction.
--- 13 storytellers rows currently have no matching organizations row; none of
--- them are in this flip set today.
+-- Inactive VENUE drops 4 more, all at active orgs:
+--   Nate H          org 1023 Hawaii 5 Oh!      venue 40 VTM - Masquerade 2020
+--   Chris Martin    org 1023 Hawaii 5 Oh!      venue 35 xLEGACY - Cam/Anarch/Indy
+--   Elizabeth James org 39   Southeast         venue 41 CtD - Changeling 2021
+--   James Logue     org 1061 New River Valley  venue 41 CtD - Changeling 2021
+--
+-- That leaves 2 rows, live on both counts: Andrew Collins (org 1162 Sundered
+-- Lands) and Erin Smith (org 1201 NEwhere), both on venue 42 Apocalypse.
+-- These people's VST posts are all genuine; the ones skipped are simply on
+-- structure that has been retired, where correcting the flag would change
+-- nothing except handing out authority.
+--
+-- COALESCE(..., 0) on both means a storytellers row pointing at a MISSING
+-- organizations or venues row is treated as inactive and skipped -- we cannot
+-- confirm such a record is live, and not granting authority is the safe
+-- direction. 13 storytellers rows currently have no matching organizations
+-- row and 0 have no matching venues row; none are in this flip set.
 UPDATE storytellers st
 JOIN vsss v
   ON v.org_id = st.organization_id
@@ -263,12 +287,15 @@ JOIN vsss v
  AND v.storyteller_id = st.user_id
 LEFT JOIN organizations o
   ON o.id = st.organization_id
+LEFT JOIN venues ve
+  ON ve.id = st.venue_id
 SET st.assistant = 0
 WHERE st.venue_id IS NOT NULL
   AND st.assistant = 1
   AND v.name NOT LIKE '%test%'
   AND COALESCE(o.org_name, '') NOT LIKE '%test%'
-  AND COALESCE(o.active, 0) = 1;
+  AND COALESCE(o.active, 0) = 1
+  AND COALESCE(ve.active, 0) = 1;
 
 -- STEP 5: Decided "review" rows.
 --
@@ -334,7 +361,7 @@ WHERE organization_id = 597 AND venue_id = 44 AND user_id = 6985 AND assistant =
 -- whether to COMMIT or ROLLBACK.
 -- ----------------------------------------------------------------------------
 
--- 6a. Expect exactly 11 venue-scoped primaries now: 6 flipped by the STEP 4
+-- 6a. Expect exactly 7 venue-scoped primaries now: 2 flipped by the STEP 4
 --     rule (no duplicate among them -- the duplicated pair is on a retired
 --     org and was excluded), plus the 4 national posts in STEP 5a, plus
 --     Loren Reed's moved row (5b).
@@ -352,7 +379,7 @@ HAVING COUNT(*) > 1;
 -- 6c. Expect every venue-scoped row that now has assistant = 0 to
 --     still resolve to a matching vsss.storyteller_id -- i.e. the flip
 --     is still correct and nothing else moved underneath it. Should
---     return 7 positions: the 6 from STEP 2c plus Loren Reed. NOTE: the
+--     return 3 positions: the 2 from STEP 2c plus Loren Reed. NOTE: the
 --     4 national posts decided in STEP 5a will NOT appear here -- they
 --     have no vsss row at that exact org+venue, which is precisely why
 --     they needed a human decision. Loren Reed's moved row (5b) WILL
@@ -368,9 +395,9 @@ WHERE st.venue_id IS NOT NULL
 ORDER BY st.organization_id, st.venue_id, st.user_id;
 
 -- 6d. Expect the venue-scoped / assistant = 1 row_count here to be
---     exactly 12 lower than the venue-scoped / assistant = 1 row_count
---     from STEP 2a: 11 rows flipped in total (6 by STEP 4, 4 in STEP 5a,
---     1 in STEP 5b) plus the 1 duplicate the dedup removed from the
+--     exactly 8 lower than the venue-scoped / assistant = 1 row_count from
+--     STEP 2a: 7 rows flipped in total (2 by STEP 4, 4 in STEP 5a, 1 in
+--     STEP 5b) plus the 1 duplicate the dedup removed from the
 --     assistant = 1 pool.
 SELECT
   CASE WHEN venue_id IS NULL THEN 'org-wide' ELSE 'venue-scoped' END AS scope,
