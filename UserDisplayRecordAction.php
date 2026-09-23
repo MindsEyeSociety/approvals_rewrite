@@ -38,16 +38,19 @@ if ($mode=="doAdd") {
     $db->query($query, [$_POST["org_id"], $_POST["id"]]);
 
     if( $_POST["admin_org_id"] ) {
-      if ( ($_POST["venue_id"] ?? null) || ($_POST["assistant"] ?? null) ) {
-        $thisassistant=1;
-      } else {
-        $thisassistant=0;
-      }
+      $thisassistant = ( $_POST["assistant"] ?? null ) ? 1 : 0;
+      $db->query("DELETE from storytellers ".
+                 "where user_id=? and organization_id=? and venue_id=?",
+                 [$_POST["id"], $_POST["admin_org_id"], $_POST["venue_id"]]);
       $db->query("INSERT into storytellers ".
                  "(organization_id, venue_id, user_id, assistant) ".
                  "values (?, ?, ?, ?)",
                  [$_POST["admin_org_id"], $_POST["venue_id"], $_POST["id"], $thisassistant]);
-      if( !$thisassistant ) {
+      // admin_user_id is the ORG's storyteller (DST/RST/NST), not a venue's --
+      // only an org-wide primary (no venue_id) should ever set it, or a
+      // primary Venue Storyteller save would overwrite it and churn it as
+      // different venues under the org get saved.
+      if( !$thisassistant && !( $_POST["venue_id"] ?? null ) ) {
         $db->query("UPDATE organizations SET admin_user_id = ? WHERE id = ?", [$_POST["id"], $_POST["admin_org_id"]]);
       }
     }  
