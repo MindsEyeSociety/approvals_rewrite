@@ -38,7 +38,11 @@
 --      2 rows / 2 distinct positions.
 --      Counts are re-derived live by STEP 2c -- trust that over any number
 --      written here.
---   3. Leave alone every org-wide row (venue_id IS NULL), and the 8
+--   3. Leave alone every org-wide row. NOTE storytellers.venue_id is never
+--      NULL in this database -- all 44 org-wide rows store 0 -- so every
+--      venue-scope test here uses COALESCE(venue_id, 0) > 0 rather than
+--      IS NOT NULL, which would match every row in the table. Also left
+--      alone are the 8
 --      "review" rows: venue-scoped posts at nation/region/globe orgs
 --      where the holder runs a VSS at that venue under a *different*
 --      org. Those are national/regional venue posts, not VSTs, and are
@@ -71,7 +75,7 @@ CREATE TABLE storytellers_backup_20260918 AS SELECT * FROM storytellers;
 
 -- 2a. Row counts by venue-scope x assistant flag.
 SELECT
-  CASE WHEN venue_id IS NULL THEN 'org-wide' ELSE 'venue-scoped' END AS scope,
+  CASE WHEN COALESCE(venue_id, 0) = 0 THEN 'org-wide' ELSE 'venue-scoped' END AS scope,
   assistant,
   COUNT(*) AS row_count
 FROM storytellers
@@ -104,7 +108,7 @@ LEFT JOIN organizations o
   ON o.id = st.organization_id
 LEFT JOIN venues ve
   ON ve.id = st.venue_id
-WHERE st.venue_id IS NOT NULL
+WHERE COALESCE(st.venue_id, 0) > 0
   AND st.assistant = 1
   AND v.name NOT LIKE '%test%'
   AND COALESCE(o.org_name, '') NOT LIKE '%test%'
@@ -133,13 +137,12 @@ LEFT JOIN organizations o
   ON o.id = st.organization_id
 LEFT JOIN venues ve
   ON ve.id = st.venue_id
-WHERE st.venue_id IS NOT NULL
+WHERE COALESCE(st.venue_id, 0) > 0
   AND st.assistant = 1
   AND v.name NOT LIKE '%test%'
   AND COALESCE(o.org_name, '') NOT LIKE '%test%'
   AND ( COALESCE(o.active, 0) <> 1 OR COALESCE(ve.active, 0) <> 1 )
 ORDER BY o.active, ve.active, st.organization_id, st.venue_id, st.user_id;
-ORDER BY st.organization_id, st.venue_id, st.user_id;
 
 -- 2c-iii. Rows excluded by the TEST-NAME guard. Expect exactly 1 today: user
 --     1745522 at org 1213 Test Domain / venue 45, which would otherwise have
@@ -156,7 +159,7 @@ LEFT JOIN organizations o
   ON o.id = st.organization_id
 LEFT JOIN venues ve
   ON ve.id = st.venue_id
-WHERE st.venue_id IS NOT NULL
+WHERE COALESCE(st.venue_id, 0) > 0
   AND st.assistant = 1
   AND ( v.name LIKE '%test%' OR COALESCE(o.org_name, '') LIKE '%test%' )
 ORDER BY st.organization_id, st.venue_id, st.user_id;
@@ -168,7 +171,7 @@ ORDER BY st.organization_id, st.venue_id, st.user_id;
 --     user_id 55391 (the one already decided -- see STEP 5).
 SELECT st.organization_id, st.venue_id, st.user_id, st.assistant
 FROM storytellers st
-WHERE st.venue_id IS NOT NULL
+WHERE COALESCE(st.venue_id, 0) > 0
   AND st.assistant = 1
   AND NOT EXISTS (
     SELECT 1 FROM vsss v
@@ -290,7 +293,7 @@ LEFT JOIN organizations o
 LEFT JOIN venues ve
   ON ve.id = st.venue_id
 SET st.assistant = 0
-WHERE st.venue_id IS NOT NULL
+WHERE COALESCE(st.venue_id, 0) > 0
   AND st.assistant = 1
   AND v.name NOT LIKE '%test%'
   AND COALESCE(o.org_name, '') NOT LIKE '%test%'
@@ -367,7 +370,7 @@ WHERE organization_id = 597 AND venue_id = 44 AND user_id = 6985 AND assistant =
 --     Loren Reed's moved row (5b).
 SELECT COUNT(*) AS venue_scoped_primaries
 FROM storytellers
-WHERE venue_id IS NOT NULL AND assistant = 0;
+WHERE COALESCE(venue_id, 0) > 0 AND assistant = 0;
 
 -- 6b. Expect zero rows -- no exact duplicates remain anywhere in the
 --     table.
@@ -390,7 +393,7 @@ JOIN vsss v
   ON v.org_id = st.organization_id
  AND v.venue_id = st.venue_id
  AND v.storyteller_id = st.user_id
-WHERE st.venue_id IS NOT NULL
+WHERE COALESCE(st.venue_id, 0) > 0
   AND st.assistant = 0
 ORDER BY st.organization_id, st.venue_id, st.user_id;
 
@@ -400,7 +403,7 @@ ORDER BY st.organization_id, st.venue_id, st.user_id;
 --     STEP 5b) plus the 1 duplicate the dedup removed from the
 --     assistant = 1 pool.
 SELECT
-  CASE WHEN venue_id IS NULL THEN 'org-wide' ELSE 'venue-scoped' END AS scope,
+  CASE WHEN COALESCE(venue_id, 0) = 0 THEN 'org-wide' ELSE 'venue-scoped' END AS scope,
   assistant,
   COUNT(*) AS row_count
 FROM storytellers
