@@ -33,8 +33,10 @@
 --      user 1486 at org 990 / venue 36).
 --   2. Flip assistant 1 -> 0 for the venue-scoped rows independently
 --      confirmed as primaries: the user IS vsss.storyteller_id for a
---      VSS at that exact (org_id, venue_id). This matches 13 rows / 12
---      distinct positions (one of the 13 is the duplicate above).
+--      VSS at that exact (org_id, venue_id), excluding test VSSs and test
+--      orgs. This matches 11 rows / 10 distinct positions (one of the 11 is
+--      the duplicate above). Counts are re-derived live by STEP 2c -- trust
+--      that over any number written here.
 --   3. Leave alone every org-wide row (venue_id IS NULL), and the 8
 --      "review" rows: venue-scoped posts at nation/region/globe orgs
 --      where the holder runs a VSS at that venue under a *different*
@@ -84,9 +86,11 @@ GROUP BY organization_id, venue_id, user_id, assistant
 HAVING COUNT(*) > 1;
 
 -- 2c. The exact rows the UPDATE (STEP 4) will flip to assistant = 0.
---     Expect 11 rows / 10 distinct positions: the 13-row list in the
---     header, less the 2 test rows excluded by STEP 4's name guard, with
---     1486/990/36 still appearing twice for the duplicate.
+--     Expect 11 rows / 10 distinct positions. The header list was written
+--     when 13 rows matched; one of those storytellers rows (53738 at org 597)
+--     has since been removed by hand and one more is excluded by STEP 4's
+--     test-name guard, leaving 11, with 1486/990/36 still appearing twice
+--     for the duplicate.
 --     Must mirror STEP 4's WHERE clause exactly -- if you change one,
 --     change the other, or this preview stops telling the truth.
 SELECT st.organization_id, st.venue_id, st.user_id, st.assistant, v.id AS vss_id, v.name AS vss_name
@@ -103,10 +107,11 @@ WHERE st.venue_id IS NOT NULL
   AND COALESCE(o.org_name, '') NOT LIKE '%test%'
 ORDER BY st.organization_id, st.venue_id, st.user_id;
 
--- 2c-ii. The rows the test guard EXCLUDES. Expect exactly 2: user 53738
---     at org 597 / venue 42 (vss "Erin's test venue") and user 1745522 at
---     org 1213 Test Domain / venue 45. Both would otherwise have been
---     flipped to primary, the first granting globe-tier authority.
+-- 2c-ii. The rows the test guard EXCLUDES. Expect exactly 1 today: user
+--     1745522 at org 1213 Test Domain / venue 45, which would otherwise have
+--     been flipped to primary. A second row (53738 at org 597 Global Office /
+--     venue 42, vss "Erin's test venue") was excluded when the guard was
+--     written but its storytellers row has since been removed by hand.
 SELECT st.organization_id, o.org_name, st.venue_id, st.user_id, v.id AS vss_id, v.name AS vss_name
 FROM storytellers st
 JOIN vsss v
@@ -194,10 +199,15 @@ DROP TEMPORARY TABLE storytellers_dedup;
 -- data shifts before a human runs it.
 -- Test data is excluded: a test VSS or a test org is not reliable evidence
 -- of anyone's real position, and flipping such a row grants live final-
--- approval authority. Two rows are excluded by this guard:
---   53738  org 597 Global Office / venue 42  -- vss 1256 "Erin's test venue"
---          (would have granted GLOBE-tier primary authority)
---   1745522 org 1213 Test Domain / venue 45  -- org name, not vss name
+-- approval authority. One row is excluded by this guard today:
+--   1745522 org 1213 Test Domain / venue 45 -- caught by the ORGANISATION
+--           name, not the VSS name (that VSS is called "The Hellmouth").
+-- A second row, 53738 at org 597 Global Office / venue 42 (vss 1256
+-- "Erin's test venue"), was also excluded when this guard was written. That
+-- storytellers row has since been removed by hand, so the guard no longer
+-- has to catch it -- but it is kept deliberately, because org 597 is GLOBE
+-- level and a test VSS there would otherwise confer globe-tier authority if
+-- such a row were ever recreated.
 -- Matched on VSS and ORGANIZATION names only, never on member names:
 -- "Donny Tester" and "Sherri Teston" are real members whose surnames
 -- contain "test", and must not be swept up by this.
