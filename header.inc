@@ -63,6 +63,7 @@ function generateMenus(){
   // General menu (always available for all users)
   $current_menu = makeMenu( 'general', 'General', 'General User Tools' );
   $current_menu['items'][] = makeMenuItem("Profile", "User Profile",  "UserDisplay.php?mode=edit");
+  $current_menu['items'][] = makeMenuItem("Logout", "Sign out", "logout.php");
   $menus[] = $current_menu;
   
   // Player menu (always available for all users)
@@ -118,6 +119,8 @@ function generateMenus(){
   if (count($menus) === 0) {
     $default_menu = makeMenu("general", "General", "General User Tools");
     $default_menu['items'][] = makeMenuItem("Profile", "User Profile",  "UserDisplay.php?mode=edit");
+    // Deliberately mirrors the main General menu above so the two do not silently drift.
+    $default_menu['items'][] = makeMenuItem("Logout", "Sign out", "logout.php");
     $menus[] = $default_menu;
   }
   
