@@ -29,7 +29,8 @@ class PageHarness {
      * @param array $session Populates $_SESSION before the page is included (after the harness's own session_start(), so it isn't reset).
      * @param bool $ignoreLogin When true (default), sets a global $IGNORE_LOGIN so header.inc's login gate lets the request through without needing $_SESSION['user_id'] set (which would also trigger the separate, heavier session_setup.inc bootstrap). Set false only when specifically testing login-gate behavior.
      * @param array $responses Canned row sets returned by successive $db->query() calls, in call order (FIFO) -- each entry is a list of associative-array rows for one query; a query beyond the queued responses gets an empty result.
-     * @return PageHarnessResult The captured queries, any header() calls, and the page's raw output/exit code.
+     * @param string $method Sets $_SERVER['REQUEST_METHOD'] before the page is included (an *input*, not to be confused with the $session field on the returned PageHarnessResult, which is $_SESSION *after* the page ran). Defaults to '' meaning "infer it": 'POST' if $post is non-empty, otherwise 'GET' -- matching every existing caller's behavior from before this parameter existed. Pass an explicit value (e.g. 'POST' with an empty $post, or 'GET' with a non-empty $post) to test a page's own method handling directly.
+     * @return PageHarnessResult The captured queries, any header() calls, the page's raw output/exit code, and $_SESSION as it stood when the page finished.
      * @throws RuntimeException if the child process cannot be started at all (a non-zero exit from the page itself is NOT an error -- that's normal for pages that redirect/die).
      */
     public static function run(
@@ -38,7 +39,8 @@ class PageHarness {
         array $post = [],
         array $session = [],
         bool $ignoreLogin = true,
-        array $responses = []
+        array $responses = [],
+        string $method = ''
     ): PageHarnessResult {
         $repoRoot = dirname( __DIR__, 2 );
         $specFile = tempnam( sys_get_temp_dir(), 'aph_spec_' );
@@ -51,6 +53,7 @@ class PageHarness {
             'session'     => $session,
             'ignoreLogin' => $ignoreLogin,
             'responses'   => $responses,
+            'method'      => $method ?: null,
             'outFile'     => $outFile,
         ] ) );
 
@@ -91,20 +94,25 @@ class PageHarness {
             $captured['headers'] ?? [],
             $stdout,
             $stderr,
-            $exitCode
+            $exitCode,
+            $captured['session'] ?? []
         );
     }
 }
 
 /** Result of one PageHarness::run() call. */
 class PageHarnessResult {
-    /** @param array $queries Each entry: ['sql' => string, 'params' => array, 'db' => string]. */
+    /**
+     * @param array $queries Each entry: ['sql' => string, 'params' => array, 'db' => string].
+     * @param array $session $_SESSION as it stood when the page finished, letting a test assert that a page destroyed or mutated the session.
+     */
     public function __construct(
         public readonly array $queries,
         public readonly array $headers,
         public readonly string $output,
         public readonly string $stderr,
-        public readonly int $exitCode
+        public readonly int $exitCode,
+        public readonly array $session = []
     ) {}
 
     /** The SQL text of every captured query, in call order. */

@@ -33,12 +33,20 @@ register_shutdown_function( function () use ( $spec ) {
     $out = [
         'queries' => $GLOBALS['__captured_queries'] ?? [],
         'headers' => function_exists( 'headers_list' ) ? headers_list() : [],
+        // $_SESSION may be unset entirely after session_destroy(), so never
+        // assume the superglobal still exists here.
+        'session' => $_SESSION ?? [],
     ];
     file_put_contents( $spec['outFile'], json_encode( $out ) );
 } );
 
 $_GET = $spec['get'] ?? [];
 $_POST = $spec['post'] ?? [];
+
+// $_SERVER['REQUEST_METHOD'] does not exist under the CLI SAPI, but page scripts
+// branch on it. Default it from whether the spec supplied a POST body, so every
+// existing caller keeps its current behaviour.
+$_SERVER['REQUEST_METHOD'] = $spec['method'] ?? ( empty( $spec['post'] ) ? 'GET' : 'POST' );
 
 // Start the session ourselves first so real db.inc's own
 // `if (session_status() === PHP_SESSION_NONE) { session_start(); }` guard
