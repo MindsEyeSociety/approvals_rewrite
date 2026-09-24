@@ -30,6 +30,9 @@ class PageHarness {
      * @param bool $ignoreLogin When true (default), sets a global $IGNORE_LOGIN so header.inc's login gate lets the request through without needing $_SESSION['user_id'] set (which would also trigger the separate, heavier session_setup.inc bootstrap). Set false only when specifically testing login-gate behavior.
      * @param array $responses Canned row sets returned by successive $db->query() calls, in call order (FIFO) -- each entry is a list of associative-array rows for one query; a query beyond the queued responses gets an empty result.
      * @param string $method Sets $_SERVER['REQUEST_METHOD'] before the page is included (an *input*, not to be confused with the $session field on the returned PageHarnessResult, which is $_SESSION *after* the page ran). Defaults to '' meaning "infer it": 'POST' if $post is non-empty, otherwise 'GET' -- matching every existing caller's behavior from before this parameter existed. Pass an explicit value (e.g. 'POST' with an empty $post, or 'GET' with a non-empty $post) to test a page's own method handling directly.
+     * @param array $cookies Populates $_COOKIE before the page is included. Combine with $preStartSession: false to test a page's own cookie-driven session_start() (e.g. logout.php's production path), rather than a session the harness pre-started for it.
+     * @param bool $preStartSession When true (default), the driver starts a session itself and assigns $_SESSION from the $session param before including the page, matching every existing caller. When false, the driver does NOT start a session up front; if $session is non-empty, it is instead written to disk under the single name/value pair in $cookies (simulating a session that already existed before this request arrived, as in production) and left for the page's own session_start() to attach to via $_COOKIE.
+     * @param ?string $sessionName When set, passed to the child process as the `session.name` ini directive -- simulating a php-fpm pool's `php_admin_value[session.name]`, i.e. an effective session cookie name the page must read back via session_name() rather than assume.
      * @return PageHarnessResult The captured queries, any header() calls, the page's raw output/exit code, and $_SESSION as it stood when the page finished.
      * @throws RuntimeException if the child process cannot be started at all (a non-zero exit from the page itself is NOT an error -- that's normal for pages that redirect/die).
      */
@@ -40,21 +43,26 @@ class PageHarness {
         array $session = [],
         bool $ignoreLogin = true,
         array $responses = [],
-        string $method = ''
+        string $method = '',
+        array $cookies = [],
+        bool $preStartSession = true,
+        ?string $sessionName = null
     ): PageHarnessResult {
         $repoRoot = dirname( __DIR__, 2 );
         $specFile = tempnam( sys_get_temp_dir(), 'aph_spec_' );
         $outFile  = tempnam( sys_get_temp_dir(), 'aph_out_' );
 
         file_put_contents( $specFile, json_encode( [
-            'page'        => $page,
-            'get'         => $get,
-            'post'        => $post,
-            'session'     => $session,
-            'ignoreLogin' => $ignoreLogin,
-            'responses'   => $responses,
-            'method'      => $method ?: null,
-            'outFile'     => $outFile,
+            'page'             => $page,
+            'get'              => $get,
+            'post'             => $post,
+            'session'          => $session,
+            'ignoreLogin'      => $ignoreLogin,
+            'responses'        => $responses,
+            'method'           => $method ?: null,
+            'outFile'          => $outFile,
+            'cookies'          => $cookies,
+            'preStartSession'  => $preStartSession,
         ] ) );
 
         $driver = __DIR__ . DIRECTORY_SEPARATOR . 'driver.php';
@@ -65,6 +73,7 @@ class PageHarness {
             . ' -d error_reporting=' . escapeshellarg( (string)( E_ALL & ~E_DEPRECATED ) )
             . ' -d display_errors=1'
             . ' -d session.save_path=' . escapeshellarg( sys_get_temp_dir() )
+            . ( $sessionName !== null ? ' -d session.name=' . escapeshellarg( $sessionName ) : '' )
             . ' ' . escapeshellarg( $driver )
             . ' ' . escapeshellarg( $specFile );
 
