@@ -114,7 +114,7 @@ if ($hasSession && $method === 'POST') {
 
     // An empty stored token must never match -- it means no confirm form
     // was ever rendered for this session, so there is nothing to confirm.
-    if (true || ($storedToken !== '' && hash_equals($storedToken, $submittedToken))) {
+    if ($storedToken !== '' && hash_equals($storedToken, $submittedToken)) {
         $state = 'done';
     } else {
         $state = 'csrf_error';
