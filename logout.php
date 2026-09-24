@@ -17,12 +17,13 @@
  *   `session_status() === PHP_SESSION_NONE`, which is true on any request
  *   that arrives with no session cookie -- exactly the case right after a
  *   successful logout. Including db.inc here would silently mint a brand
- *   new `approvals2017` session and emit a fresh `Set-Cookie` on the very
- *   page that is supposed to be telling the user they are signed out. This
- *   was verified directly: `php -r 'session_name("probe"); session_start();'`
- *   creates a session even with no incoming cookie at all. Skipping db.inc
- *   also means this page needs no database and no include/settings.inc, so
- *   it keeps working even if MySQL is down.
+ *   new session (under whatever name is actually configured -- see below)
+ *   and emit a fresh `Set-Cookie` on the very page that is supposed to be
+ *   telling the user they are signed out. This was verified directly:
+ *   `php -r 'session_name("probe"); session_start();'` creates a session
+ *   even with no incoming cookie at all. Skipping db.inc also means this
+ *   page needs no database and no include/settings.inc, so it keeps
+ *   working even if MySQL is down.
  * - **Do NOT include header.inc, titlebar.php, application.inc or
  *   footerbar.inc.** Every one of them breaks on a destroyed/absent
  *   session:
@@ -42,6 +43,23 @@
  *   None of that chrome is needed here anyway: this page renders its own
  *   minimal, self-contained HTML (see the Presentation section below).
  *
+ * ## Never hardcode the session cookie name
+ *
+ * db.inc:14 calls `session_name("approvals2017")`, but that call is a
+ * silent no-op in production: the php8.3-fpm-legacy pool sets
+ * `php_admin_value[session.name] = "OLDDB_SESSID"`, and a `php_admin_value`
+ * can never be overridden at runtime by `session_name()` (or by an .ini
+ * file, or by `ini_set()`) -- the pool's value always wins. This was the
+ * actual cause of logout.php never working in production: it checked for
+ * `$_COOKIE['approvals2017']`, but the cookie the server actually issues is
+ * named `OLDDB_SESSID`, confirmed live via
+ * `set-cookie: OLDDB_SESSID=...; path=/; domain=.modernenigmasociety.org;
+ * secure; HttpOnly; SameSite=Lax`. The only reliable way to learn the
+ * *effective* name is to ask PHP for it with `session_name()` (valid to
+ * call before `session_start()`), which always reflects whatever the pool
+ * actually configured, regardless of what db.inc or anything else claims.
+ * Never hardcode a session cookie name anywhere in this file again.
+ *
  * ## Attaching to a session vs. creating one
  *
  * This page must never be the reason a session comes into existence. It
@@ -49,13 +67,16 @@
  *   1. If a session is already active (PHP_SESSION_ACTIVE) -- e.g. the
  *      integration test harness (tests/Integration/driver.php) starts one
  *      itself before including this page -- use it as-is.
- *   2. Else, if an `approvals2017` cookie was sent, start a session using
- *      exactly the same name and session_set_cookie_params() as db.inc
- *      (lifetime 0, path '/', domain '.modernenigmasociety.org', secure
- *      true, httponly true, samesite 'Lax') so PHP attaches to the same
- *      session db.inc would have. These parameters MUST stay in sync with
- *      db.inc:6-15 -- if that call ever changes, update the copy below
- *      too.
+ *   2. Else, if a cookie named after the effective session name
+ *      (`session_name()`, captured once up front) was sent, start a
+ *      session using that same name and the same
+ *      session_set_cookie_params() as db.inc (lifetime 0, path '/', domain
+ *      '.modernenigmasociety.org', secure true, httponly true, samesite
+ *      'Lax') so PHP attaches to the same session db.inc would have. These
+ *      params MUST stay in sync with db.inc:6-15 -- if that call ever
+ *      changes, update the copy below too. (session_name() itself needs no
+ *      such syncing -- it always reads back whatever name is actually
+ *      configured.)
  *   3. Else, no session cookie exists at all, so no session_start() is
  *      called; the page renders its read-only "not signed in" state.
  *
@@ -71,9 +92,16 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
 
+// The effective session cookie name -- captured once, up front, because the
+// php-fpm pool's php_admin_value[session.name] always wins over db.inc's
+// session_name("approvals2017") call and cannot be overridden here either;
+// session_name() is the only reliable way to learn it. Never hardcode a
+// name in the branches below (see the DocBlock above).
+$sessionName = session_name();
+
 if (session_status() === PHP_SESSION_ACTIVE) {
     // Already attached to a session (e.g. by the test harness) -- use it.
-} elseif (isset($_COOKIE['approvals2017'])) {
+} elseif (isset($_COOKIE[$sessionName])) {
     // Mirror db.inc:6-15 exactly so we attach to the same session db.inc
     // would -- keep these two in sync.
     session_set_cookie_params([
@@ -84,7 +112,6 @@ if (session_status() === PHP_SESSION_ACTIVE) {
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
-    session_name('approvals2017');
     session_start();
 }
 // Else: no incoming session cookie at all -- do NOT call session_start(),
@@ -141,7 +168,7 @@ if ($state === 'done') {
     $_SESSION = [];
     session_destroy();
 
-    foreach (logoutCookieSpecs() as $spec) {
+    foreach (logoutCookieSpecs($sessionName) as $spec) {
         // Pass every field explicitly -- a cookie is identified by
         // (name, domain, path), and relying on setcookie()'s defaults for
         // any of them creates a second, unrelated cookie instead of

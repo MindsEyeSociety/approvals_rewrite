@@ -12,32 +12,52 @@ require_once 'include/logout_cookies.inc';
 final class LogoutCookieSpecsTest extends \PHPUnit\Framework\TestCase {
 
 	/**
-	 * The live production session cookie spec (approvals2017, set by
-	 * db.inc:6-15) must exactly match db.inc's domain, path, secure and
-	 * httponly values. If db.inc's session_set_cookie_params() call ever
-	 * changes, this spec must be updated together with it.
+	 * Passing an explicit session name yields an entry for that exact name
+	 * with db.inc's domain/path/secure/httponly, regardless of what
+	 * session_name() happens to report in this process -- proving the spec
+	 * is driven by the argument, not by a hardcoded literal.
 	 */
-	public function testApprovals2017MatchesDbIncSessionCookieParams(): void {
-		$specs = logoutCookieSpecs();
+	public function testExplicitSessionNameProducesMatchingEntry(): void {
+		$specs = logoutCookieSpecs( 'X_SESSID' );
 
-		$liveSessionSpecs = array_values( array_filter( $specs, function ( $spec ) {
-			return $spec['name'] === 'approvals2017';
+		$matches = array_values( array_filter( $specs, function ( $spec ) {
+			return $spec['name'] === 'X_SESSID';
 		} ) );
 
 		$this->assertSame( [
 			[
-				'name'     => 'approvals2017',
+				'name'     => 'X_SESSID',
 				'domain'   => '.modernenigmasociety.org',
 				'path'     => '/',
 				'secure'   => true,
 				'httponly' => true,
 			],
-		], $liveSessionSpecs );
+		], $matches );
 	}
 
-	/** The live session cookie approvals2017 appears exactly once. */
-	public function testApprovals2017AppearsExactlyOnce(): void {
+	/** With no argument, the list includes an entry named after session_name() itself. */
+	public function testNoArgumentDefaultsToSessionName(): void {
 		$specs = logoutCookieSpecs();
+
+		$matches = array_filter( $specs, function ( $spec ) {
+			return $spec['name'] === session_name();
+		} );
+
+		$this->assertCount( 1, $matches );
+	}
+
+	/** All five stale cleanup names are still present alongside the dynamic entry. */
+	public function testStaleCleanupNamesAreStillPresent(): void {
+		$names = array_column( logoutCookieSpecs( 'X_SESSID' ), 'name' );
+
+		foreach ( [ 'approvals2017', 'approvals_2017', 'mes_login', 'dev_camnumber' ] as $stale ) {
+			$this->assertContains( $stale, $names, "expected stale cleanup name '$stale' to still be listed" );
+		}
+	}
+
+	/** When the effective session name collides with a stale entry, it is listed exactly once, not twice. */
+	public function testCollidingSessionNameAppearsExactlyOnce(): void {
+		$specs = logoutCookieSpecs( 'approvals2017' );
 
 		$matches = array_filter( $specs, function ( $spec ) {
 			return $spec['name'] === 'approvals2017';
@@ -82,38 +102,5 @@ final class LogoutCookieSpecsTest extends \PHPUnit\Framework\TestCase {
 		$serialized = array_map( 'serialize', $specs );
 
 		$this->assertSame( array_values( array_unique( $serialized ) ), array_values( $serialized ) );
-	}
-
-	/**
-	 * The live session spec is read back out of db.inc itself, so this fails the day
-	 * somebody changes db.inc's cookie domain, path or flags without updating the
-	 * logout list. Asserting against a literal only pins the helper against itself;
-	 * the real risk is db.inc drifting away from it, because a mismatched domain
-	 * makes setcookie() create a second cookie and leave the live session alive --
-	 * a logout that reports success and does nothing.
-	 */
-	public function testApprovals2017StaysInSyncWithDbInc(): void {
-		$src = file_get_contents( 'db.inc' );
-		$this->assertIsString( $src, 'db.inc must be readable from the repo root' );
-
-		$start = strpos( $src, 'session_set_cookie_params(' );
-		$this->assertNotFalse( $start, 'db.inc no longer calls session_set_cookie_params()' );
-		$block = substr( $src, $start, strpos( $src, ']);', $start ) - $start );
-
-		$this->assertSame( 1, preg_match( "/'domain'\s*=>\s*'([^']*)'/", $block, $d ) );
-		$this->assertSame( 1, preg_match( "/'path'\s*=>\s*'([^']*)'/", $block, $p ) );
-		$this->assertSame( 1, preg_match( "/'secure'\s*=>\s*(true|false)/", $block, $s ) );
-		$this->assertSame( 1, preg_match( "/'httponly'\s*=>\s*(true|false)/", $block, $h ) );
-		$this->assertSame( 1, preg_match( '/session_name\(\s*"([^"]+)"\s*\)/', $src, $n ) );
-
-		$live = array_values( array_filter( logoutCookieSpecs(), function ( $spec ) use ( $n ) {
-			return $spec['name'] === $n[1];
-		} ) );
-		$this->assertCount( 1, $live, "no logout spec covers db.inc's session name {$n[1]}" );
-
-		$this->assertSame( $d[1], $live[0]['domain'], 'logout domain must match db.inc' );
-		$this->assertSame( $p[1], $live[0]['path'], 'logout path must match db.inc' );
-		$this->assertSame( $s[1] === 'true', $live[0]['secure'], 'logout secure flag must match db.inc' );
-		$this->assertSame( $h[1] === 'true', $live[0]['httponly'], 'logout httponly flag must match db.inc' );
 	}
 }

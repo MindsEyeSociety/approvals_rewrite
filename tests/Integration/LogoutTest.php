@@ -158,6 +158,92 @@ final class LogoutTest extends \PHPUnit\Framework\TestCase {
 		$this->assertStringNotContainsString( self::DONE_TEXT, $result->output );
 	}
 
+	/**
+	 * Regression test for the actual production path: no session is active when the
+	 * request arrives (unlike every test above, which pre-starts one in-process), and
+	 * the browser sent only a cookie named after the pool's *effective* session name
+	 * (simulated here via the session.name ini directive, standing in for
+	 * php_admin_value[session.name]) -- exactly what happens in production, where that
+	 * name is OLDDB_SESSID, not 'approvals2017'. This proves logout.php's cookie-lookup
+	 * branch derives the name at runtime via session_name() and actually attaches.
+	 */
+	public function testNoActiveSessionWithEffectiveCookieAttachesAndShowsConfirmForm(): void {
+		$result = PageHarness::run(
+			'logout.php',
+			session: [ 'user_id' => '42', 'user_name' => 'Test User' ],
+			cookies: [ 'OLDDB_SESSID' => bin2hex( random_bytes( 16 ) ) ],
+			preStartSession: false,
+			sessionName: 'OLDDB_SESSID'
+		);
+
+		$this->assertStringContainsString( self::CONFIRM_TEXT, $result->output );
+		$this->assertStringContainsString( 'name="csrf_token"', $result->output );
+		$this->assertArrayHasKey( 'user_id', $result->session );
+		$this->assertSame( '42', $result->session['user_id'] );
+	}
+
+	/**
+	 * Same production shape as above, but carried through to a verified POST: proves
+	 * logout.php not only attaches to the cookie-derived session but destroys it.
+	 *
+	 * This does NOT also assert on the expiring Set-Cookie header for the real cookie
+	 * name: under the CLI SAPI, setcookie()/header() never populate headers_list() at
+	 * all (verified directly -- a bare setcookie() call followed by headers_list()
+	 * returns an empty array under `php -S`-less CLI, regardless of the page under
+	 * test), so PageHarness's captured $result->headers is always empty and cannot
+	 * express this. The session-destruction assertion below is what actually proves
+	 * the cookie-lookup branch ran end-to-end; setcookie() being called with the right
+	 * spec is covered separately and directly by the logoutCookieSpecs() unit tests.
+	 */
+	public function testNoActiveSessionWithEffectiveCookiePostDestroysSession(): void {
+		$token = bin2hex( random_bytes( 32 ) );
+		$result = PageHarness::run(
+			'logout.php',
+			post: [ 'csrf_token' => $token ],
+			session: [ 'user_id' => '42', 'logout_csrf' => $token ],
+			method: 'POST',
+			cookies: [ 'OLDDB_SESSID' => bin2hex( random_bytes( 16 ) ) ],
+			preStartSession: false,
+			sessionName: 'OLDDB_SESSID'
+		);
+
+		$this->assertStringContainsString( self::DONE_TEXT, $result->output );
+		$this->assertSame( [], $result->session, 'a verified logout must destroy the cookie-derived session entirely' );
+	}
+
+	/**
+	 * logout.php must never hardcode the session cookie name in its executable
+	 * session-attach logic -- that literal is exactly the historical defect (it checked
+	 * for 'approvals2017', but production's pool-configured name is OLDDB_SESSID) and
+	 * must never creep back in. Uses the tokenizer, not a plain string search, so a
+	 * DocBlock/comment mentioning the name historically (as this file's own DocBlock
+	 * does, deliberately) does not trip a false positive.
+	 */
+	public function testLogoutPhpHasNoHardcodedApprovals2017InExecutableCode(): void {
+		$src = file_get_contents( dirname( __DIR__, 2 ) . '/logout.php' );
+		$this->assertIsString( $src, 'logout.php must be readable from the repo root' );
+
+		$codeLiterals = [];
+		foreach ( token_get_all( $src ) as $token ) {
+			if ( !is_array( $token ) ) {
+				continue;
+			}
+			[ $id, $text ] = $token;
+			if ( in_array( $id, [ T_COMMENT, T_DOC_COMMENT ], true ) ) {
+				continue;
+			}
+			if ( $id === T_CONSTANT_ENCAPSED_STRING ) {
+				$codeLiterals[] = trim( $text, "'\"" );
+			}
+		}
+
+		$this->assertNotContains(
+			'approvals2017',
+			$codeLiterals,
+			'logout.php must derive the session cookie name at runtime via session_name(), never hardcode it'
+		);
+	}
+
 	/** Logout never touches the database and never renders the app's sidebar/footer chrome, in any state. */
 	public function testLogoutNeverQueriesDatabaseAndRendersNoChrome(): void {
 		$token = bin2hex( random_bytes( 32 ) );
