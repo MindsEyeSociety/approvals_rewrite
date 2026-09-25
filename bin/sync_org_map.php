@@ -6,11 +6,16 @@
  * Unlike the per-mutation hook (GoogleSheetsService::syncOrgMap), this pushes regardless of
  * the GOOGLE_MAP_SYNC_ENABLED flag, so it works for the initial seed before the flag is on.
  *
- * Usage:  php utility/sync_org_map.php
+ * Usage:  php bin/sync_org_map.php
  * Exit:   0 on success, 1 on failure.
  *
  * @see GoogleSheetsService
  */
+
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit("Forbidden: CLI only\n");
+}
 
 // db.inc uses relative includes, so run from the web root.
 chdir( dirname( __DIR__ ) );

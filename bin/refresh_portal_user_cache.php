@@ -17,7 +17,7 @@
  * summary and exits non-zero on failure so cron can surface the error.
  *
  * Usage (cron, as user nta):
- *   30 3 * * * /usr/bin/php /var/www/approvals_rewrite/utility/refresh_portal_user_cache.php >> /home/nta/logs/portal_user_cache_refresh.log 2>&1
+ *   30 3 * * * /usr/bin/php /var/www/approvals_rewrite/bin/refresh_portal_user_cache.php >> /home/nta/logs/portal_user_cache_refresh.log 2>&1
  */
 
 if (php_sapi_name() !== 'cli') {

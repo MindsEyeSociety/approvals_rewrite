@@ -11,9 +11,14 @@
  * Idempotent: re-running after --apply changes nothing.
  *
  * Usage:
- *   php utility/cleanup_org_encoding.php           # dry run (preview only)
- *   php utility/cleanup_org_encoding.php --apply    # write the changes
+ *   php bin/cleanup_org_encoding.php           # dry run (preview only)
+ *   php bin/cleanup_org_encoding.php --apply    # write the changes
  */
+
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit("Forbidden: CLI only\n");
+}
 
 // db.inc uses relative includes, so run from the web root.
 chdir( dirname( __DIR__ ) );
