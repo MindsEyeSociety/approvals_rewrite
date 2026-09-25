@@ -24,11 +24,11 @@
  * be triggered over HTTP.
  *
  * Per this repo's convention for one-off maintenance scripts (see
- * utility/cleanup_org_encoding.php), this script stays in the repo after use
+ * bin/cleanup_org_encoding.php), this script stays in the repo after use
  * as a record of the fix rather than being deleted.
  *
  * Usage (one-off, as user nta):
- *   php /var/www/approvals_rewrite/utility/apply_portal_user_cache_collation_fix.php
+ *   php /var/www/approvals_rewrite/bin/apply_portal_user_cache_collation_fix.php
  */
 
 if (php_sapi_name() !== 'cli') {

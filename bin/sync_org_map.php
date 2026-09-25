@@ -6,7 +6,7 @@
  * Unlike the per-mutation hook (GoogleSheetsService::syncOrgMap), this pushes regardless of
  * the GOOGLE_MAP_SYNC_ENABLED flag, so it works for the initial seed before the flag is on.
  *
- * Usage:  php utility/sync_org_map.php
+ * Usage:  php bin/sync_org_map.php
  * Exit:   0 on success, 1 on failure.
  *
  * @see GoogleSheetsService

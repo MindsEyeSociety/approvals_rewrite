@@ -11,8 +11,8 @@
  * Idempotent: re-running after --apply changes nothing.
  *
  * Usage:
- *   php utility/cleanup_org_encoding.php           # dry run (preview only)
- *   php utility/cleanup_org_encoding.php --apply    # write the changes
+ *   php bin/cleanup_org_encoding.php           # dry run (preview only)
+ *   php bin/cleanup_org_encoding.php --apply    # write the changes
  */
 
 // db.inc uses relative includes, so run from the web root.
