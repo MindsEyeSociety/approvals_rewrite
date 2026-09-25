@@ -15,6 +15,11 @@
  *   php bin/cleanup_org_encoding.php --apply    # write the changes
  */
 
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit("Forbidden: CLI only\n");
+}
+
 // db.inc uses relative includes, so run from the web root.
 chdir( dirname( __DIR__ ) );
 require "db.inc";
