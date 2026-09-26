@@ -43,3 +43,17 @@ $SETTINGS["GOOGLE_MAP_SYNC_ENABLED"] = false;                     // master on/o
 $SETTINGS["GOOGLE_SA_KEY_FILE"]      = "/etc/approvals/google-sa.json";
 $SETTINGS["GOOGLE_MAP_SHEET_ID"]     = "your-google-sheet-id";    // the /spreadsheets/d/<ID>/ value
 $SETTINGS["GOOGLE_MAP_SHEET_TAB"]    = "Sheet1";                   // tab the sync owns (columns A:C)
+
+// Escalation of suppressed officer notifications (see EmailService::sendNewApplicationEmail).
+// The approval system refuses to email members whose MES membership has lapsed. Applied to a
+// storyteller, that silently stalls the application queue: the officer is never told there is
+// work waiting. When the assigned officer cannot be reached, the system instead climbs the
+// organization hierarchy to the next reachable storyteller and notifies the National
+// Storyteller's office below.
+// A portal-database outage makes EVERY member look inactive, so escalation is deliberately
+// skipped in that case rather than escalating every application at once.
+$SETTINGS["ESCALATION_ENABLED"]      = false;                      // master on/off switch
+// Role mailbox notified whenever an officer notification is suppressed, whether or not an
+// active storyteller was found further up. Leave blank to skip that notification; the climb
+// to the next storyteller still happens. Must be a plain address (no display name).
+$SETTINGS["NTA_NOTIFICATION_EMAIL"]  = "nta@example.org";
