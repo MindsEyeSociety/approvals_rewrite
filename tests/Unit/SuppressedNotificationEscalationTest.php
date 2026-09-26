@@ -452,4 +452,170 @@ final class SuppressedNotificationEscalationTest extends \PHPUnit\Framework\Test
 
 		$this->assertCount( 0, $service->deliveries );
 	}
+
+	/**
+	 * Builds a recording EmailService for sendTierNotificationEmail()/
+	 * tierNotificationWarranted() tests, mirroring makeService() but with the
+	 * tierNotificationEnabled() override those tests need. Kept as a separate
+	 * helper (rather than adding a parameter to makeService()) so this file's
+	 * existing tests -- including the two byte-identical pins -- are never
+	 * touched.
+	 *
+	 * @param array<string,string> $statuses user id (as string) => membershipStatus() result
+	 * @param array<string,array> $infos user id (as string) => getUserInfo() result
+	 * @param bool $tierNotificationEnabled the tierNotificationEnabled() override
+	 * @param bool $escalationEnabled the escalationEnabled() override
+	 */
+	private function makeTierService( array $statuses, array $infos, string $ntaEmail = 'nta@example.org', bool $tierNotificationEnabled = true, bool $escalationEnabled = true ) {
+		$userInfoDAO = new class( $statuses, $infos ) {
+			public $statuses;
+			public $infos;
+			function __construct( $statuses, $infos ) {
+				$this->statuses = $statuses;
+				$this->infos = $infos;
+			}
+			function membershipStatus( $id ) {
+				return $this->statuses[(string) $id] ?? 'unknown';
+			}
+			function getUserInfo( $id ) {
+				if( is_null( $id ) || !is_numeric( $id ) ) {
+					return array();
+				}
+				return $this->infos[(string) $id] ?? array( 'name' => 'No Name Set', 'email' => '' );
+			}
+		};
+		$characterDAO = new class {
+			function readByID( $id ) { return null; }
+		};
+		$applicationService = new class {
+			function getLowST( $application ) { return null; }
+		};
+
+		$service = new class( $userInfoDAO, $characterDAO, $applicationService ) extends EmailService {
+			public $deliveries = array();
+			public $nta_email = '';
+			public $escalation_enabled = true;
+			public $tier_notification_enabled = true;
+			protected function deliver( $to, $subject, $message, $headers ) {
+				$this->deliveries[] = array( 'to' => $to, 'subject' => $subject, 'message' => $message, 'headers' => $headers );
+				return true;
+			}
+			protected function ntaEmail() { return $this->nta_email; }
+			protected function escalationEnabled() { return $this->escalation_enabled; }
+			protected function tierNotificationEnabled() { return $this->tier_notification_enabled; }
+		};
+		$service->nta_email = $ntaEmail;
+		$service->escalation_enabled = $escalationEnabled;
+		$service->tier_notification_enabled = $tierNotificationEnabled;
+
+		return $service;
+	}
+
+	/** Builds a plain application object with the fields sendTierNotificationEmail() reads. */
+	private function makeTierApplication( $id = 1, $description = 'Test App' ) {
+		$application = new stdClass;
+		$application->id = $id;
+		$application->description = $description;
+		return $application;
+	}
+
+	/** A reachable tier officer gets exactly one delivery, with the tier subject and no CC header. */
+	public function testTierNotificationReachableOfficerGetsExactlyOneDeliveryNoCc(): void {
+		$service = $this->makeTierService(
+			array( '50' => 'active' ),
+			array( '50' => array( 'name' => 'Mid Mary', 'email' => 'mary@example.org' ) )
+		);
+
+		$service->sendTierNotificationEmail( $this->makeTierApplication(), 2, 50, array(), 'Pat Player', 'Alice' );
+
+		$this->assertCount( 1, $service->deliveries );
+		$delivery = $service->deliveries[0];
+		$this->assertSame( 'mary@example.org', $delivery['to'] );
+		$this->assertSame( '[Approval System] An application has reached Mid approval', $delivery['subject'] );
+		$this->assertStringNotContainsString( 'CC:', $delivery['headers'] );
+	}
+
+	/** An unreachable tier officer escalates to the first reachable storyteller above them, then notifies the NTA. */
+	public function testTierNotificationUnreachableOfficerEscalatesThenNotifiesNta(): void {
+		$service = $this->makeTierService(
+			array( '50' => 'expired', '60' => 'active' ),
+			array(
+				'50' => array( 'name' => 'Lapsed Larry', 'email' => 'larry@example.org' ),
+				'60' => array( 'name' => 'Nancy Next', 'email' => 'nancy@example.org' ),
+			)
+		);
+
+		$service->sendTierNotificationEmail( $this->makeTierApplication(), 2, 50, array( 60 ), 'Pat Player', 'Alice' );
+
+		$this->assertCount( 2, $service->deliveries );
+		$this->assertSame( 'nancy@example.org', $service->deliveries[0]['to'] );
+		$this->assertSame( 'nta@example.org', $service->deliveries[1]['to'] );
+	}
+
+	/** A Portal outage sends nothing for a tier notification either -- the same no-false-positive rule applies. */
+	public function testTierNotificationPortalUnavailableSendsZeroDeliveries(): void {
+		$service = $this->makeTierService(
+			array( '50' => 'portal_unavailable' ),
+			array( '50' => array( 'name' => 'Lapsed Larry', 'email' => 'larry@example.org' ) )
+		);
+
+		$service->sendTierNotificationEmail( $this->makeTierApplication(), 2, 50, array( 60 ), 'Pat Player', 'Alice' );
+
+		$this->assertCount( 0, $service->deliveries );
+	}
+
+	/** With TIER_NOTIFICATION_ENABLED off, nothing is sent at all, even for a perfectly reachable officer. */
+	public function testTierNotificationDisabledSendsZeroDeliveries(): void {
+		$service = $this->makeTierService(
+			array( '50' => 'active' ),
+			array( '50' => array( 'name' => 'Mid Mary', 'email' => 'mary@example.org' ) ),
+			'nta@example.org',
+			false
+		);
+
+		$service->sendTierNotificationEmail( $this->makeTierApplication(), 2, 50, array(), 'Pat Player', 'Alice' );
+
+		$this->assertCount( 0, $service->deliveries );
+	}
+
+	/**
+	 * tierNotificationWarranted() decides whether a status transition warrants
+	 * notifying the tier officer -- the guard AppDetails.php applies at both
+	 * ratchet points.
+	 *
+	 * @see EmailService::tierNotificationWarranted()
+	 */
+	public function testTierNotificationWarrantedForAGenuinePendingTransition(): void {
+		$service = $this->makeTierService( array(), array() );
+
+		$this->assertTrue( $service->tierNotificationWarranted( 'Pending Mid', 'Pending Low', 12, 45 ) );
+	}
+
+	/** No notification when the status didn't actually change. */
+	public function testTierNotificationNotWarrantedWhenStatusUnchanged(): void {
+		$service = $this->makeTierService( array(), array() );
+
+		$this->assertFalse( $service->tierNotificationWarranted( 'Pending Mid', 'Pending Mid', 12, 45 ) );
+	}
+
+	/** No notification for a non-"Pending" status, e.g. a final Approved. */
+	public function testTierNotificationNotWarrantedForApprovedStatus(): void {
+		$service = $this->makeTierService( array(), array() );
+
+		$this->assertFalse( $service->tierNotificationWarranted( 'Approved', 'Pending Global', 12, 45 ) );
+	}
+
+	/** No notification when the officer is the same user who just made the change. */
+	public function testTierNotificationNotWarrantedWhenOfficerIsTheActor(): void {
+		$service = $this->makeTierService( array(), array() );
+
+		$this->assertFalse( $service->tierNotificationWarranted( 'Pending Mid', 'Pending Low', 45, 45 ) );
+	}
+
+	/** No notification when no officer could be resolved. */
+	public function testTierNotificationNotWarrantedWhenOfficerIsNull(): void {
+		$service = $this->makeTierService( array(), array() );
+
+		$this->assertFalse( $service->tierNotificationWarranted( 'Pending Mid', 'Pending Low', 12, null ) );
+	}
 }

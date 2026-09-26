@@ -147,6 +147,101 @@ class OrganizationDAO {
 		}
 	}
 
+	/**
+	 * Finds the org id at a specific level ('domain', 'region', 'nation', or
+	 * 'globe') within $org_id's OWN hierarchy branch, by blanking every column
+	 * deeper than that level and matching on the rest of $org_id's own
+	 * globe/nation/region/domain values. This is the org-lookup half of
+	 * getSTIDAtLevel(), split out so escalation-chain building (see
+	 * ApplicationService::getEscalationSTIDsForTier()) can climb from that
+	 * org's PARENT without resolving a storyteller lookup it doesn't need yet.
+	 *
+	 * Follows the same pattern AppDetailsTopSection.php builds inline for its
+	 * storyteller list.
+	 *
+	 * @param $org_id The org whose branch is searched.
+	 * @param $level One of 'domain', 'region', 'nation', 'globe'.
+	 * @return mixed The matching org's id, or null when $org_id has no value at
+	 *   that level (e.g. asking for 'domain' on a nation-level org), when
+	 *   $org_id itself doesn't exist, when $level is unrecognised, or when no
+	 *   org matches.
+	 * @example
+	 *   // org 40 sits at domain 'NoVA', region 'MidAtl', nation 'US'
+	 *   $organizationDAO->getOrgIDAtLevel( 40, 'region' ); // => the region-level org's id
+	 * @see OrganizationDAO::getSTIDAtLevel()
+	 * @see AppDetailsTopSection.php's inline storyteller-list build, the pattern this follows.
+	 */
+	function getOrgIDAtLevel( $org_id, $level ) {
+		$this->db->query( "SELECT domain, region, nation FROM organizations WHERE id=?", [$org_id] );
+		$row = $this->db->nextRow();
+		if( $row == null ) return null;
+
+		switch( $level ) {
+			case 'domain':
+				if( $row['domain'] == '' ) return null;
+				$this->db->query(
+					"SELECT id FROM organizations WHERE chapter='' AND domain=? AND region=? AND nation=?",
+					[$row['domain'], $row['region'], $row['nation']]
+				);
+				break;
+			case 'region':
+				if( $row['region'] == '' ) return null;
+				$this->db->query(
+					"SELECT id FROM organizations WHERE chapter='' AND domain='' AND region=? AND nation=?",
+					[$row['region'], $row['nation']]
+				);
+				break;
+			case 'nation':
+				if( $row['nation'] == '' ) return null;
+				$this->db->query(
+					"SELECT id FROM organizations WHERE chapter='' AND domain='' AND region='' AND nation=?",
+					[$row['nation']]
+				);
+				break;
+			case 'globe':
+				$this->db->query(
+					"SELECT id FROM organizations WHERE chapter='' AND domain='' AND region='' AND nation=''"
+				);
+				break;
+			default:
+				return null;
+		}
+
+		$target_row = $this->db->nextRow();
+		if( $target_row == null || !isset( $target_row['id'] ) ) return null;
+		return $target_row['id'];
+	}
+
+	/**
+	 * Resolves the storyteller who governs a specific level ('domain',
+	 * 'region', 'nation', or 'globe') within $org_id's OWN hierarchy branch --
+	 * used to notify the officer responsible for an application's current
+	 * approval tier (see ApplicationService::getSTForTier()).
+	 *
+	 * Finds the org at that level via getOrgIDAtLevel(), then resolves ITS
+	 * storyteller via getOrgSTID() -- not a raw admin_user_id read -- so a
+	 * chain of orgs with an empty admin_user_id (35 such orgs in production)
+	 * is climbed the same way every other officer lookup in this system
+	 * climbs it.
+	 *
+	 * @param $org_id The org whose branch is searched.
+	 * @param $level One of 'domain', 'region', 'nation', 'globe'.
+	 * @return mixed The resolved storyteller's user id, or null when $org_id
+	 *   has no value at that level, when $org_id itself doesn't exist, or when
+	 *   no org matches at that level.
+	 * @example
+	 *   // org 40 sits at domain 'NoVA', region 'MidAtl', nation 'US'
+	 *   $organizationDAO->getSTIDAtLevel( 40, 'region' ); // => the RST's user id
+	 * @see OrganizationDAO::getOrgIDAtLevel()
+	 * @see OrganizationDAO::getOrgSTID()
+	 * @see ApplicationService::getSTForTier()
+	 */
+	function getSTIDAtLevel( $org_id, $level ) {
+		$level_org_id = $this->getOrgIDAtLevel( $org_id, $level );
+		if( $level_org_id === null ) return null;
+		return $this->getOrgSTID( $level_org_id );
+	}
+
 	function readByUserID( $user_id ) {
 		$query="SELECT o.* FROM users u LEFT JOIN organizations o ON u.org_id = o.id WHERE u.id=?";
 		$this->db->query( $query, [$user_id] );

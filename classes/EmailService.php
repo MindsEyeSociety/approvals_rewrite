@@ -1,4 +1,6 @@
 <?php
+include_once("AppDetails_functions.php");
+
 /**
  * Email Service
  * @package Services
@@ -79,6 +81,20 @@ class EmailService {
 	 * @return bool true when escalation is enabled
 	 */
 	protected function escalationEnabled() { global $SETTINGS; return !empty( $SETTINGS["ESCALATION_ENABLED"] ); }
+
+	/**
+	 * Master on/off switch for sendTierNotificationEmail(), kept deliberately
+	 * separate from escalationEnabled(): escalation only concerns what happens
+	 * once a notification is already being sent, whereas tier notification is
+	 * brand-new outbound mail that never existed before this feature, so it
+	 * must ship dark on its own switch. Reads
+	 * $SETTINGS['TIER_NOTIFICATION_ENABLED'] directly so tests can stub it by
+	 * overriding this method instead of touching globals.
+	 *
+	 * @return bool true when tier notification is enabled
+	 * @see EmailService::sendTierNotificationEmail()
+	 */
+	protected function tierNotificationEnabled() { global $SETTINGS; return !empty( $SETTINGS["TIER_NOTIFICATION_ENABLED"] ); }
 
 	/**
 	 * Renders a human-readable label for a storyteller, falling back to a
@@ -379,6 +395,121 @@ class EmailService {
 		);
 
 		$this->notifyOfficerOrEscalate( $storyteller_id, $chain, $subject, $message, $headers, $context );
+	}
+
+	/**
+	 * Decides whether a status transition warrants notifying the tier officer
+	 * who now must act on it -- the guard AppDetails.php applies at both
+	 * ratchet points before calling sendTierNotificationEmail(), so the rule
+	 * lives in one place instead of being reimplemented at each call site.
+	 *
+	 * Notification is warranted only when ALL of:
+	 * - $new_status is a "Pending <Tier>" status (never "Approved", "Denied",
+	 *   or "Removed" -- those are terminal or already handled elsewhere).
+	 * - $new_status actually differs from $old_status -- an application
+	 *   already sitting at "Pending Mid" that stays there is not a fresh
+	 *   transition, and re-notifying on every unrelated edit would be noise.
+	 * - $officer_id could be resolved at all.
+	 * - $officer_id is not $actor_id, the user who just made the change --
+	 *   storytellers routinely hold multiple offices, and mailing someone
+	 *   about their own click is noise, not a notification.
+	 *
+	 * @return bool true when the tier officer should be notified
+	 * @param $new_status string the application's status after the update
+	 * @param $old_status string the application's status immediately before this request's changes
+	 * @param $actor_id mixed the user who made the change ($_SESSION['user_id'])
+	 * @param $officer_id mixed the tier officer who would be notified, or null if none could be resolved
+	 * @example EmailService::tierNotificationWarranted( 'Pending Mid', 'Pending Low', 12, 45 ); // true
+	 * @example EmailService::tierNotificationWarranted( 'Pending Mid', 'Pending Mid', 12, 45 ); // false -- no transition
+	 * @example EmailService::tierNotificationWarranted( 'Approved', 'Pending Global', 12, 45 ); // false -- not a Pending status
+	 * @example EmailService::tierNotificationWarranted( 'Pending Mid', 'Pending Low', 45, 45 ); // false -- officer is the actor
+	 * @see EmailService::sendTierNotificationEmail()
+	 */
+	function tierNotificationWarranted( $new_status, $old_status, $actor_id, $officer_id ) {
+		if( strpos( (string) $new_status, 'Pending ' ) !== 0 ) {
+			return false;
+		}
+		if( (string) $new_status === (string) $old_status ) {
+			return false;
+		}
+		if( $officer_id === null ) {
+			return false;
+		}
+		if( (string) $officer_id === (string) $actor_id ) {
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Send an email notifying the officer at a given approval tier that an
+	 * application has ratcheted up to their tier and needs their review -- the
+	 * notification AppDetails.php never sent before this feature: only the
+	 * applicant was told (see sendChangesEmail()), while the officer who now
+	 * had to act on it heard nothing and the application simply sat there.
+	 *
+	 * Gated by its own independent switch, tierNotificationEnabled(): returns
+	 * immediately, logging, when it is off. This is deliberately separate from
+	 * escalationEnabled(), which only governs what happens once a notification
+	 * is already being sent -- see tierNotificationEnabled().
+	 *
+	 * When the tier officer cannot be reached -- their membership has expired,
+	 * is unverifiable, or their email on file is unusable -- climbs $chain to
+	 * the first reachable storyteller and notifies both that storyteller and
+	 * the NTA, via the same shared policy as sendNewApplicationEmail() and
+	 * sendVssJoinRequestEmail() (see notifyOfficerOrEscalate()).
+	 *
+	 * Deliberately carries no "CC:" header: the applicant already receives
+	 * sendChangesEmail() for this same transition, so CCing them here would
+	 * double-mail them.
+	 *
+	 * @return void
+	 * @param $application Object the application that ratcheted tiers; reads id and description
+	 * @param $tier_rank int the tier rank (1-5, per approvalTierRank()) the application just reached
+	 * @param $officer_id mixed the user id of the officer at that tier, or null if none could be resolved
+	 * @param $chain array ordered candidate storyteller ids above the tier officer, nearest
+	 *   first (see ApplicationService::getEscalationSTIDsForTier())
+	 * @param $applicant_name string the applicant's display name
+	 * @param $character_name string the character's name, or '' if none
+	 * @see EmailService::notifyOfficerOrEscalate()
+	 * @see EmailService::tierNotificationEnabled()
+	 * @see EmailService::tierNotificationWarranted()
+	 * @see ApplicationService::getSTForTier()
+	 */
+	function sendTierNotificationEmail( $application, $tier_rank, $officer_id, $chain, $applicant_name, $character_name ) {
+		if( !$this->tierNotificationEnabled() ) {
+			error_log("EmailService::sendTierNotificationEmail - tier notification disabled, suppressing notice for application " . ($application->id ?? 'null'));
+			return;
+		}
+
+		$tier_name = approvalTierName( $tier_rank );
+		$app_id = $application->id ?? '';
+		$description = htmlspecialchars( $application->description ?? '' );
+		$applicant = htmlspecialchars( $applicant_name ?? '' );
+		$character = htmlspecialchars( $character_name ?? '' );
+
+		$app_link = "<a href=\"http://legacy.modernenigmasociety.org/approvals_2017/AppDetails.php?id=$app_id&\">".
+			"http://legacy.modernenigmasociety.org/approvals_2017/AppDetails.php?id=$app_id&</a>";
+
+		$message = "<p>Greetings,</p>\n".
+			"<p>An application for $description by $applicant for $character has reached ".
+			htmlspecialchars( $tier_name )." approval and is awaiting your review.</p>\n".
+			"<p>Please log in to the system at $app_link to review.</p>\n".
+			"<p>This is an automated message from the Approval system.</p>\n";
+		$subject = "[Approval System] An application has reached " . $tier_name . " approval";
+		$headers =
+			"From: Approval System <approvals@legacy.modernenigmasociety.org>\r\n".
+			"Reply-To: Approval System <approvals@cammail.modernenigmasociety.org>\r\n".
+			"Content-Type: text/html\r\n";
+
+		$context = array(
+			'what' => "An application for $description for $character",
+			'who' => $applicant_name,
+			'link' => $app_link,
+			'ref' => "application $app_id",
+		);
+
+		$this->notifyOfficerOrEscalate( $officer_id, $chain, $subject, $message, $headers, $context );
 	}
 
 	function sendChangesEmail ( $application, $changes ) {

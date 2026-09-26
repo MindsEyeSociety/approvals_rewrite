@@ -57,3 +57,15 @@ $SETTINGS["ESCALATION_ENABLED"]      = false;                      // master on/
 // active storyteller was found further up. Leave blank to skip that notification; the climb
 // to the next storyteller still happens. Must be a plain address (no display name).
 $SETTINGS["NTA_NOTIFICATION_EMAIL"]  = "nta@example.org";
+
+// Tier-ratchet notifications (see EmailService::sendTierNotificationEmail). When an
+// application ratchets up to a new approval tier (e.g. Low -> Mid), the officer at that
+// tier was never told before this feature: only the applicant was notified, and the
+// application simply sat there until someone happened to look. This sends the officer a
+// notification instead, escalating via the same suppressed-officer policy as
+// ESCALATION_ENABLED (see NTA_NOTIFICATION_EMAIL above) when they can't be reached.
+// Deliberately a SEPARATE switch from ESCALATION_ENABLED: this feature sends brand-new
+// outbound mail that never existed before, so it must ship dark on its own switch rather
+// than piggyback on escalation's, which only concerns what happens once a notification is
+// already being sent.
+$SETTINGS["TIER_NOTIFICATION_ENABLED"] = false;   // master on/off switch

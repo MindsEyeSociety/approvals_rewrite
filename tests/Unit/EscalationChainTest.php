@@ -64,6 +64,18 @@ final class EscalationChainTest extends \PHPUnit\Framework\TestCase {
 				}
 				return "ORG:$id";
 			}
+			/** @var array<string,mixed> "$org_id:$level" => resolved org id at that level; absent means the level doesn't exist in the branch. */
+			public $orgIdsAtLevel = array();
+			/** @var array<string,mixed> "$org_id:$level" => storyteller id at that level; absent means the level doesn't exist in the branch. */
+			public $stsAtLevel = array();
+			function getOrgIDAtLevel( $org_id, $level ) {
+				$key = $org_id . ':' . $level;
+				return array_key_exists( $key, $this->orgIdsAtLevel ) ? $this->orgIdsAtLevel[$key] : null;
+			}
+			function getSTIDAtLevel( $org_id, $level ) {
+				$key = $org_id . ':' . $level;
+				return array_key_exists( $key, $this->stsAtLevel ) ? $this->stsAtLevel[$key] : null;
+			}
 		};
 		$vssDAO = new class {
 			/** @var array<string,mixed> vss_id => org id (or null). */
@@ -350,5 +362,129 @@ final class EscalationChainTest extends \PHPUnit\Framework\TestCase {
 		$chain = $service->getEscalationSTIDsForVssSelection( 7, 'ST-SAME' );
 
 		$this->assertSame( array(), $chain );
+	}
+
+	/**
+	 * getSTForTier( $application, 1 ) delegates entirely to getLowST() -- rank 1
+	 * (Low) is the only tier resolved by VST/venue-scoped lookup rather than an
+	 * org level.
+	 *
+	 * @see ApplicationService::getSTForTier()
+	 */
+	public function testGetSTForTierRankOneDelegatesToGetLowST(): void {
+		$service = $this->makeService();
+		$this->characterDAO->vss = 7;
+		$this->vssDAO->sts['7'] = 'VST-7';
+
+		$application = new stdClass;
+		$application->character_id = 1;
+		$application->org_id = 0;
+		$application->user_id = 999;
+
+		$this->assertSame( 'VST-7', $service->getSTForTier( $application, 1 ) );
+	}
+
+	/** getSTForTier() maps ranks 2-5 to the domain/region/nation/globe officers of the application's anchor org. */
+	public function testGetSTForTierMapsRanksToOrgLevels(): void {
+		$service = $this->makeService();
+		$this->characterDAO->vss = 0;
+		$this->characterDAO->org = 30;
+		$this->organizationDAO->stsAtLevel = array(
+			'30:domain' => 'DST-30',
+			'30:region' => 'RST-30',
+			'30:nation' => 'NST-30',
+			'30:globe' => 'GST-30',
+		);
+
+		$application = new stdClass;
+		$application->character_id = 1;
+		$application->org_id = 0;
+		$application->user_id = 999;
+
+		$this->assertSame( 'DST-30', $service->getSTForTier( $application, 2 ) );
+		$this->assertSame( 'RST-30', $service->getSTForTier( $application, 3 ) );
+		$this->assertSame( 'NST-30', $service->getSTForTier( $application, 4 ) );
+		$this->assertSame( 'GST-30', $service->getSTForTier( $application, 5 ) );
+	}
+
+	/** A 'vss' anchor resolves ranks 2-5 against the VSS's OWN org (via VSSDAO::getVSSOrgID()), not the vss id itself. */
+	public function testGetSTForTierResolvesVssAnchorOrgForHigherTiers(): void {
+		$service = $this->makeService();
+		$this->characterDAO->vss = 7;
+		$this->vssDAO->orgs['7'] = 40;
+		$this->organizationDAO->stsAtLevel = array( '40:domain' => 'DST-40' );
+
+		$application = new stdClass;
+		$application->character_id = 1;
+		$application->org_id = 0;
+		$application->user_id = 999;
+
+		$this->assertSame( 'DST-40', $service->getSTForTier( $application, 2 ) );
+	}
+
+	/** getSTForTier() returns null when the org's branch has no value at the requested level. */
+	public function testGetSTForTierReturnsNullWhenLevelAbsentFromBranch(): void {
+		$service = $this->makeService();
+		$this->characterDAO->vss = 0;
+		$this->characterDAO->org = 30;
+		// No stsAtLevel entries configured: the stub returns null for every level, matching
+		// OrganizationDAO::getSTIDAtLevel()'s contract when the org's branch has no value there.
+
+		$application = new stdClass;
+		$application->character_id = 1;
+		$application->org_id = 0;
+		$application->user_id = 999;
+
+		$this->assertNull( $service->getSTForTier( $application, 3 ) );
+	}
+
+	/** getEscalationSTIDsForTier() for rank 1 delegates entirely to the existing getEscalationSTIDs() chain. */
+	public function testGetEscalationSTIDsForTierRankOneDelegatesToExistingChain(): void {
+		$service = $this->makeService();
+		$this->organizationDAO->parents = array( '5' => 105, '105' => 205, '205' => null );
+		$this->organizationDAO->sts = array( '105' => 'ST-105', '205' => 'ST-205' );
+
+		$application = new stdClass;
+		$application->character_id = "";
+		$application->org_id = 5;
+		$application->user_id = 999;
+
+		$chain = $service->getEscalationSTIDsForTier( $application, 1, 'ST-105' );
+
+		$this->assertSame( array( 'ST-205' ), $chain );
+	}
+
+	/** For ranks 2-5, the chain climbs from the org AT the target level, excluding the tier officer. */
+	public function testGetEscalationSTIDsForTierClimbsFromTheLevelOrg(): void {
+		$service = $this->makeService();
+		$this->characterDAO->vss = 0;
+		$this->characterDAO->org = 30;
+		$this->organizationDAO->orgIdsAtLevel = array( '30:domain' => 300 );
+		$this->organizationDAO->parents = array( '300' => 400, '400' => null );
+		$this->organizationDAO->sts = array( '300' => 'DST', '400' => 'RST' );
+
+		$application = new stdClass;
+		$application->character_id = 1;
+		$application->org_id = 0;
+		$application->user_id = 999;
+
+		$chain = $service->getEscalationSTIDsForTier( $application, 2, 'DST' );
+
+		$this->assertSame( array( 'RST' ), $chain );
+	}
+
+	/** getEscalationSTIDsForTier() returns an empty chain when the level doesn't exist in the branch. */
+	public function testGetEscalationSTIDsForTierReturnsEmptyWhenLevelAbsent(): void {
+		$service = $this->makeService();
+		$this->characterDAO->vss = 0;
+		$this->characterDAO->org = 30;
+		// No orgIdsAtLevel entries configured: the level doesn't exist in this org's branch.
+
+		$application = new stdClass;
+		$application->character_id = 1;
+		$application->org_id = 0;
+		$application->user_id = 999;
+
+		$this->assertSame( array(), $service->getEscalationSTIDsForTier( $application, 3, null ) );
 	}
 }

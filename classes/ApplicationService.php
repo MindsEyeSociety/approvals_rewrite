@@ -236,6 +236,130 @@ class ApplicationService {
 		return $this->climbFromOrg( $org_id, $exclude_st_id, $max_rungs );
 	}
 
+	/**
+	 * Maps a tier rank to the org level whose storyteller governs it, for
+	 * getSTForTier() and getEscalationSTIDsForTier() to share -- ranks 2-5
+	 * only, since rank 1 (Low) is resolved by getLowST() instead of an org
+	 * level lookup.
+	 *
+	 * @return array<int,string> tier rank => OrganizationDAO::getSTIDAtLevel() level name
+	 */
+	private static function tierLevels() {
+		return array( 2 => 'domain', 3 => 'region', 4 => 'nation', 5 => 'globe' );
+	}
+
+	/**
+	 * Resolves the org id that anchors a tier-2-and-above officer lookup for an
+	 * application: the same org resolveApprovalAnchor() resolves for
+	 * getLowST()/getEscalationSTIDs(), except a 'vss' anchor is resolved to its
+	 * OWN org (via VSSDAO::getVSSOrgID()) since a VSS's storyteller sits below
+	 * org level, whereas an 'org' anchor's id already IS an org id.
+	 *
+	 * @param $application The application being routed; see resolveApprovalAnchor().
+	 * @return mixed The anchor org's id, or null when it cannot be resolved (e.g. a
+	 *   VSS with no matching row).
+	 * @see ApplicationService::resolveApprovalAnchor()
+	 * @see ApplicationService::getSTForTier()
+	 * @see ApplicationService::getEscalationSTIDsForTier()
+	 */
+	private function resolveTierAnchorOrgID( $application ) {
+		$anchor = $this->resolveApprovalAnchor( $application );
+		if( $anchor['anchor_kind'] == 'vss' ) {
+			return $this->vssDAO->getVSSOrgID( $anchor['anchor_id'] );
+		}
+		return $anchor['anchor_id'];
+	}
+
+	/**
+	 * Resolves the officer responsible for approving an application at a given
+	 * tier, so a ratchet to that tier (see AppDetails.php) can notify them
+	 * instead of leaving the application to sit unnoticed -- the same class of
+	 * silence already fixed for a suppressed Low ST notification (see
+	 * notifyOfficerOrEscalate()), now applied to every tier above Low.
+	 *
+	 * Maps the tier rank to an org level and resolves that level's storyteller
+	 * within the application's anchor org (see resolveTierAnchorOrgID()), the
+	 * same org resolveApprovalAnchor() resolves for getLowST():
+	 *   1 Low    -> getLowST( $application )        (VST / venue-scoped, unchanged)
+	 *   2 Mid    -> the 'domain' officer (DST)
+	 *   3 High   -> the 'region' officer (RST)
+	 *   4 Top    -> the 'nation' officer (NST)
+	 *   5 Global -> the 'globe' officer
+	 *
+	 * @param $application The application being routed; see resolveApprovalAnchor().
+	 * @param $tier_rank The tier rank (1-5, per approvalTierRank()) whose officer is wanted.
+	 * @return mixed The resolved officer's user id, or null when no officer can be
+	 *   resolved -- an unrecognised tier_rank, an anchor with no resolvable org, or a
+	 *   level the org's branch has no value at (see OrganizationDAO::getSTIDAtLevel()).
+	 * @example $service->getSTForTier( $application, 2 ); // => the Mid (domain) storyteller's user id
+	 * @see ApplicationService::resolveApprovalAnchor()
+	 * @see OrganizationDAO::getSTIDAtLevel()
+	 */
+	function getSTForTier( $application, $tier_rank ) {
+		if( $tier_rank == 1 ) {
+			return $this->getLowST( $application );
+		}
+
+		$levels = self::tierLevels();
+		if( !isset( $levels[$tier_rank] ) ) {
+			return null;
+		}
+
+		$org_id = $this->resolveTierAnchorOrgID( $application );
+		if( $org_id === null || $org_id === '' ) {
+			return null;
+		}
+
+		return $this->organizationDAO->getSTIDAtLevel( $org_id, $levels[$tier_rank] );
+	}
+
+	/**
+	 * Produces the ordered list of storytellers above a tier officer, for use
+	 * when that officer's notification is suppressed and needs to be escalated
+	 * (see EmailService::sendTierNotificationEmail()).
+	 *
+	 * For rank 1 (Low), delegates entirely to the existing getEscalationSTIDs().
+	 * For ranks 2-5, climbs from the org AT the target level (see
+	 * OrganizationDAO::getOrgIDAtLevel()), excluding $officer_id -- mirroring
+	 * the VSS-anchor asymmetry getEscalationSTIDs() applies: starting the climb
+	 * AT that org (rather than its parent) is what lets climbFromOrg() exclude
+	 * the tier officer's own rung while still picking up every officer above
+	 * them, instead of skipping straight past the next rung up.
+	 *
+	 * @param $application The application being escalated; see getSTForTier().
+	 * @param $tier_rank The tier rank (1-5) $officer_id was resolved for.
+	 * @param $officer_id The tier officer's user id, excluded from the returned chain.
+	 * @param $max_rungs Safety cap on how many orgs to climb before giving up.
+	 * @return array Ordered list of distinct storyteller user ids above the tier
+	 *   officer, nearest first. Empty when no officer can be resolved at that tier's
+	 *   level, or there is nowhere left to climb.
+	 * @see ApplicationService::getSTForTier()
+	 * @see ApplicationService::climbFromOrg()
+	 * @see EmailService::sendTierNotificationEmail()
+	 */
+	function getEscalationSTIDsForTier( $application, $tier_rank, $officer_id, $max_rungs = 12 ) {
+		if( $tier_rank == 1 ) {
+			return $this->getEscalationSTIDs( $application, $officer_id, $max_rungs );
+		}
+
+		$levels = self::tierLevels();
+		if( !isset( $levels[$tier_rank] ) ) {
+			return array();
+		}
+
+		$org_id = $this->resolveTierAnchorOrgID( $application );
+		if( $org_id === null || $org_id === '' ) {
+			return array();
+		}
+
+		$level_org_id = $this->organizationDAO->getOrgIDAtLevel( $org_id, $levels[$tier_rank] );
+		if( $level_org_id === null ) {
+			return array();
+		}
+
+		return $this->climbFromOrg( $level_org_id, $officer_id, $max_rungs );
+	}
+
 	function determineApplicationOrganization( $application ) {
 		if ( is_object($application->character) && strtoupper($application->character->char_type)!="NPC" ) {
 			$user_info = $this->userInfoDAO->getUserInfo($application->user_id);
