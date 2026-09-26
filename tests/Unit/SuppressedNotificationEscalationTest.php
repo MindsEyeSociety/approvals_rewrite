@@ -374,4 +374,82 @@ final class SuppressedNotificationEscalationTest extends \PHPUnit\Framework\Test
 		$this->assertCount( 1, $service->deliveries );
 		$this->assertStringContainsString( 'for  and', $service->deliveries[0]['message'] );
 	}
+
+	/**
+	 * An active, reachable VST gets exactly one delivery, whose
+	 * to/subject/message/headers are byte-identical to the pre-escalation
+	 * MoveCharacter2.php mail() call -- the no-regression pin for the
+	 * untouched happy path of the VSS join notification.
+	 *
+	 * @see EmailService::sendVssJoinRequestEmail()
+	 */
+	public function testVssJoinActiveStorytellerGetsExactlyOneDeliveryIdenticalToToday(): void {
+		$service = $this->makeService(
+			array( '50' => 'active' ),
+			array( '50' => array( 'name' => 'Sam ST', 'email' => 'sam@example.org' ) ),
+			array()
+		);
+
+		$service->sendVssJoinRequestEmail( 50, array(), 'Pat Player', 'Alice', 'Ghoul' );
+
+		$this->assertCount( 1, $service->deliveries );
+		$delivery = $service->deliveries[0];
+		$this->assertSame( 'sam@example.org', $delivery['to'] );
+		$this->assertSame( '[Approval System] A character has applied to join your VSS', $delivery['subject'] );
+		$this->assertSame(
+			"Pat Player has applied to add their character, ".
+			"Alice (Ghoul) to your Venue Style Sheet.  ".
+			"If you accept this character, you will have Low approval over this ".
+			"character, and will be able to view the character under the ".
+			"Character Census in the Storyteller menu.<br><br>\n" .
+			"This is an automated message from the Approval system.<br>".
+			"<a href=\"http://legacy.modernenigmasociety.org/approvals_2017/index.php\">Log in</a> to ".
+			"the system and choose \"VSS Character List\" from the Storyteller ".
+			"menue to accept or reject this character.",
+			$delivery['message']
+		);
+		$this->assertSame(
+			"From: Approval System <approvals@legacy.modernenigmasociety.org>\r\n".
+			"Reply-To: Approval System <approvals@legacy.modernenigmasociety.org>\r\n".
+			"Content-Type: text/html\r\n",
+			$delivery['headers']
+		);
+	}
+
+	/** An unreachable VST escalates to the first reachable storyteller above them, then notifies the NTA. */
+	public function testVssJoinUnreachableStorytellerEscalatesThenNotifiesNta(): void {
+		$service = $this->makeService(
+			array( '50' => 'expired', '60' => 'active' ),
+			array(
+				'50' => array( 'name' => 'Lapsed Lenny', 'email' => 'lenny@example.org' ),
+				'60' => array( 'name' => 'Nancy Next', 'email' => 'nancy@example.org' ),
+			),
+			array()
+		);
+
+		$service->sendVssJoinRequestEmail( 50, array( 60 ), 'Pat Player', 'Alice', 'Ghoul' );
+
+		$this->assertCount( 2, $service->deliveries );
+		$this->assertSame( 'nancy@example.org', $service->deliveries[0]['to'] );
+		$this->assertSame( '[Approval System] Escalated - a storyteller with a lapsed membership', $service->deliveries[0]['subject'] );
+		$this->assertStringContainsString( 'Lapsed Lenny', $service->deliveries[0]['message'] );
+		$this->assertStringContainsString( 'expired', $service->deliveries[0]['message'] );
+		$this->assertStringContainsString( 'Alice', $service->deliveries[0]['message'] );
+
+		$this->assertSame( 'nta@example.org', $service->deliveries[1]['to'] );
+		$this->assertStringContainsString( 'Nancy Next', $service->deliveries[1]['message'] );
+	}
+
+	/** A Portal outage sends nothing for the VSS join notification either -- the same no-false-positive rule applies. */
+	public function testVssJoinPortalUnavailableSendsZeroDeliveries(): void {
+		$service = $this->makeService(
+			array( '50' => 'portal_unavailable' ),
+			array( '50' => array( 'name' => 'Lapsed Lenny', 'email' => 'lenny@example.org' ) ),
+			array()
+		);
+
+		$service->sendVssJoinRequestEmail( 50, array( 60 ), 'Pat Player', 'Alice', 'Ghoul' );
+
+		$this->assertCount( 0, $service->deliveries );
+	}
 }

@@ -300,4 +300,55 @@ final class EscalationChainTest extends \PHPUnit\Framework\TestCase {
 		// Climb starts at parent(50) = 60, which is where the low ST would have been sought.
 		$this->assertSame( array( 'ORG:60' ), $service->getEscalationSTIDs( $application, null ) );
 	}
+
+	/**
+	 * A positive vss_id (MoveCharacter2's sign convention for a real vsss row)
+	 * climbs from the VSS's OWN org, not that org's parent -- the same
+	 * asymmetry getEscalationSTIDs() applies for a VSS-backed application
+	 * anchor, since the VSS's storyteller sits below org level.
+	 */
+	public function testPositiveVssIdClimbsFromTheVssOwnOrg(): void {
+		$service = $this->makeService();
+		$this->vssDAO->orgs['7'] = 40;
+		$this->organizationDAO->parents = array( '40' => 140, '140' => null );
+		$this->organizationDAO->sts = array( '40' => 'ST-40', '140' => 'ST-140' );
+
+		$chain = $service->getEscalationSTIDsForVssSelection( 7 );
+
+		$this->assertSame( array( 'ST-40', 'ST-140' ), $chain );
+	}
+
+	/**
+	 * A negative vss_id (MoveCharacter2's sign convention for an org, negated)
+	 * climbs from above that org's PARENT, not the org itself -- its
+	 * storyteller was already the officer being escalated above.
+	 */
+	public function testNegativeVssIdClimbsFromTheParentOfTheNegatedOrg(): void {
+		$service = $this->makeService();
+		$this->organizationDAO->parents = array( '60' => 160, '160' => null );
+		$this->organizationDAO->sts = array( '60' => 'ST-60', '160' => 'ST-160' );
+
+		$chain = $service->getEscalationSTIDsForVssSelection( -60 );
+
+		$this->assertSame( array( 'ST-160' ), $chain );
+	}
+
+	/** A zero vss_id means no VSS was selected, so there is no officer to escalate above. */
+	public function testZeroVssIdReturnsEmptyChain(): void {
+		$service = $this->makeService();
+
+		$this->assertSame( array(), $service->getEscalationSTIDsForVssSelection( 0 ) );
+	}
+
+	/** The excluded storyteller id is still honored when climbing from a positive vss_id. */
+	public function testPositiveVssIdExcludesGivenStorytellerId(): void {
+		$service = $this->makeService();
+		$this->vssDAO->orgs['7'] = 40;
+		$this->organizationDAO->parents = array( '40' => 140, '140' => null );
+		$this->organizationDAO->sts = array( '40' => 'ST-SAME', '140' => 'ST-SAME' );
+
+		$chain = $service->getEscalationSTIDsForVssSelection( 7, 'ST-SAME' );
+
+		$this->assertSame( array(), $chain );
+	}
 }

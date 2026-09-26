@@ -191,6 +191,51 @@ class ApplicationService {
 		return $chain;
 	}
 
+	/**
+	 * Produces the ordered list of storytellers above the officer identified by
+	 * a sign-encoded VSS selection, for use when that officer's MES membership
+	 * has lapsed and they cannot be emailed about a character requesting to
+	 * join their venue.
+	 *
+	 * Mirrors the sign convention MoveCharacter2.php (and getLowST()) use for a
+	 * VSS selection: a positive $vss_id identifies a real vsss row whose
+	 * storyteller sits BELOW org level, so the climb starts at the VSS's OWN
+	 * org -- that org's storyteller has not yet been notified. A negative
+	 * $vss_id identifies an org (via -$vss_id) whose storyteller sits AT that
+	 * org, so the climb starts at the org's PARENT, one rung above the officer
+	 * already resolved. Applying getParentOrgID uniformly to both would skip
+	 * the VSS's own org's storyteller for the positive case -- the same
+	 * asymmetry getEscalationSTIDs() applies for an application's anchor.
+	 *
+	 * @param $vss_id The sign-encoded selection: positive is a vsss.id,
+	 *   negative is -1 times an organizations.id, 0 means no VSS was selected.
+	 * @param $exclude_st_id The officer's own user id, excluded from the
+	 *   returned chain even if the climb would otherwise re-encounter them.
+	 * @param $max_rungs Safety cap on how many orgs to climb before giving up.
+	 * @return array Ordered list of distinct storyteller user ids above the
+	 *   officer, nearest first. Empty when $vss_id is 0 or there is nowhere
+	 *   left to climb.
+	 * @example
+	 *   // vss 7 belongs to org 40
+	 *   $service->getEscalationSTIDsForVssSelection( 7, $storytellerId );
+	 *   // => the chain of storytellers climbing from org 40
+	 * @see ApplicationService::getEscalationSTIDs()
+	 * @see ApplicationService::climbFromOrg()
+	 */
+	function getEscalationSTIDsForVssSelection( $vss_id, $exclude_st_id = null, $max_rungs = 12 ) {
+		if( $vss_id == 0 ) {
+			return array();
+		}
+
+		if( $vss_id > 0 ) {
+			$org_id = $this->vssDAO->getVSSOrgID( $vss_id );
+		} else {
+			$org_id = $this->organizationDAO->getParentOrgID( 0 - $vss_id );
+		}
+
+		return $this->climbFromOrg( $org_id, $exclude_st_id, $max_rungs );
+	}
+
 	function determineApplicationOrganization( $application ) {
 		if ( is_object($application->character) && strtoupper($application->character->char_type)!="NPC" ) {
 			$user_info = $this->userInfoDAO->getUserInfo($application->user_id);

@@ -122,76 +122,96 @@ class EmailService {
 	}
 
 	/**
-	 * Send an email notifying the Low storyteller of a new application
-	 * awaiting their approval. When the Low ST cannot be reached -- their
-	 * membership has expired, is unverifiable, or their email on file is
-	 * unusable -- climbs the escalation chain (see
-	 * ApplicationService::getEscalationSTIDs()) to the first reachable
-	 * storyteller and notifies both that storyteller and the NTA, instead of
-	 * silently dropping the notification as before.
+	 * Strips any "CC:" header line from a header block before it is reused for
+	 * an escalation or NTA notice, so an address the original recipient's copy
+	 * was CC'd to (e.g. the applicant) is never disclosed to someone else the
+	 * notification gets forwarded to. Every other line is preserved verbatim
+	 * and in order.
 	 *
-	 * A Portal outage ('portal_unavailable') is deliberately never escalated:
-	 * it makes every member look inactive, so escalating on it would escalate
-	 * every pending application at once. Escalation can also be disabled
-	 * entirely via $SETTINGS['ESCALATION_ENABLED']; either way, nothing is
-	 * sent and the suppression is logged.
+	 * @return string the header block with any line beginning "CC:" removed
+	 * @param $headers string raw header block, lines terminated with \r\n
+	 * @example
+	 *   $this->stripCcHeader("From: a\r\nCC: b\r\nContent-Type: text/html\r\n");
+	 *   // => "From: a\r\nContent-Type: text/html\r\n"
+	 */
+	private function stripCcHeader( $headers ) {
+		$lines = explode( "\r\n", $headers );
+		$kept = array_filter( $lines, function( $line ) {
+			return $line !== '' && stripos( $line, 'CC:' ) !== 0;
+		} );
+		return $kept ? implode( "\r\n", $kept ) . "\r\n" : '';
+	}
+
+	/**
+	 * The shared suppressed-officer-notification policy: notifies an officer
+	 * directly when reachable, otherwise climbs the escalation chain to the
+	 * first reachable storyteller above them and separately notifies the NTA,
+	 * instead of silently dropping the notification. Used by every caller that
+	 * emails a single officer about a pending item awaiting their action (see
+	 * sendNewApplicationEmail(), sendVssJoinRequestEmail()), so this policy --
+	 * who counts as reachable, how the chain is walked, what the NTA is told,
+	 * and what gets logged -- exists in exactly one place.
+	 *
+	 * Reachability rules:
+	 * - active membership + a syntactically valid email -> deliver $subject/
+	 *   $message/$headers to the officer directly, unchanged, and stop.
+	 * - membershipStatus() === 'portal_unavailable' -> send nothing. A Portal
+	 *   outage makes every member look inactive, so escalating on it would
+	 *   escalate every pending notification at once.
+	 * - escalationEnabled() === false -> send nothing.
+	 * - otherwise -> walk $chain in order and deliver an escalation notice to
+	 *   the first candidate who is both active and has a valid email, then
+	 *   always attempt a separate notice to ntaEmail() (when configured and
+	 *   valid) describing what happened, whether or not a candidate was
+	 *   reachable.
 	 *
 	 * @return void
-	 * @param $application Array
+	 * @param $officer_id mixed the officer who should have received the direct notification
+	 * @param $chain array ordered candidate storyteller ids above the officer, nearest
+	 *   first (see ApplicationService::getEscalationSTIDs() /
+	 *   getEscalationSTIDsForVssSelection())
+	 * @param $subject string subject line used only for the direct-to-officer send
+	 * @param $message string body used only for the direct-to-officer send
+	 * @param $headers string headers used for the direct-to-officer send; any "CC:" line
+	 *   is stripped (see stripCcHeader()) before reuse for the escalation/NTA sends
+	 * @param $context array{what: string, who: string, link: string, ref: string} plain
+	 *   strings used to build the escalation/NTA bodies: 'what' describes the item
+	 *   needing review (e.g. "An application for Foo"), 'who' is the applicant/player's
+	 *   name, 'link' is the HTML anchor to the relevant page, and 'ref' identifies the
+	 *   item for the NTA subject line and log messages (e.g. "application 42")
+	 * @see EmailService::sendNewApplicationEmail()
+	 * @see EmailService::sendVssJoinRequestEmail()
 	 */
-	function sendNewApplicationEmail( $application ) {
-		$user_info = $this->userInfoDAO->getUserInfo($application->user_id);
-		$low_st_id = $this->applicationService->getLowST($application);
-		$st_info = $this->userInfoDAO->getUserInfo( $low_st_id );
-		$character_info = $this->characterDAO->readByID( $application->character_id );
-		$character_name = is_object( $character_info ) ? $character_info->name : '';
+	private function notifyOfficerOrEscalate( $officer_id, $chain, $subject, $message, $headers, $context ) {
+		$officer_info = $this->userInfoDAO->getUserInfo( $officer_id );
+		$officer_name = $officer_info['name'] ?? '';
+		$officer_email = $officer_info['email'] ?? '';
 
-		$user_name = $user_info['name'] ?? '';
-		$user_email = $user_info['email'] ?? '';
-		$st_name = $st_info['name'] ?? '';
-		$st_email = $st_info['email'] ?? '';
+		$status = $this->userInfoDAO->membershipStatus( $officer_id );
+		$email_ok = $this->isValidEmail( $officer_email );
 
-		$message = "<p>Greetings $st_name,</p>\n".
-			"<p>An application for {$application->description} has been entered ".
-			"by $user_name for $character_name and ".
-			"is awaiting your review.</p>\n".
-			"<p>Your timely attention to this matter would be appreciated.</p>\n".
-			"<p>This is an automated message from the Approval system.\n".
-			"Please Log in to the system at ".
-			"<a href=\"http://legacy.modernenigmasociety.org/approvals_2017/AppDetails.php?id={$application->id}&\">".
-			"http://legacy.modernenigmasociety.org/approvals_2017/AppDetails.php?id={$application->id}&</a> to reply</p>\n";
-		$subject = "[Approval System] $user_name has just entered an application";
-		$headers =
-			"From: Approval System <approvals@legacy.modernenigmasociety.org>\r\n".
-			"Reply-To: Approval System <approvals@cammail.modernenigmasociety.org>\r\n".
-			"Content-Type: text/html\r\n".
-			"CC: $user_email\r\n";
-
-		$status = $this->userInfoDAO->membershipStatus( $low_st_id );
-		$email_ok = $this->isValidEmail( $st_email );
-
-		// Only send to the ST directly if they are an active member and have a valid email address
+		// Only send to the officer directly if they are an active member and have a valid email address
 		if( $status === 'active' && $email_ok ) {
-			$this->deliver( $st_email, $subject, $message, $headers );
+			$this->deliver( $officer_email, $subject, $message, $headers );
 			return;
 		}
 
 		if( $status === 'portal_unavailable' ) {
-			error_log("EmailService::sendNewApplicationEmail - suppressing notification for application {$application->id}: portal unavailable, low ST " . ($low_st_id ?? 'null'));
+			error_log("EmailService::notifyOfficerOrEscalate - suppressing notification for {$context['ref']}: portal unavailable, officer " . ($officer_id ?? 'null'));
 			return;
 		}
 
 		if( !$this->escalationEnabled() ) {
-			error_log("EmailService::sendNewApplicationEmail - escalation disabled, suppressing notification for application {$application->id}, low ST " . ($low_st_id ?? 'null') . " status $status email_ok " . ($email_ok ? 'yes' : 'no'));
+			error_log("EmailService::notifyOfficerOrEscalate - escalation disabled, suppressing notification for {$context['ref']}, officer " . ($officer_id ?? 'null') . " status $status email_ok " . ($email_ok ? 'yes' : 'no'));
 			return;
 		}
 
-		error_log("EmailService::sendNewApplicationEmail - suppressing direct notification for application {$application->id}: low ST " . ($low_st_id ?? 'null') . " status $status email_ok " . ($email_ok ? 'yes' : 'no'));
+		error_log("EmailService::notifyOfficerOrEscalate - suppressing direct notification for {$context['ref']}: officer " . ($officer_id ?? 'null') . " status $status email_ok " . ($email_ok ? 'yes' : 'no'));
 
 		$reason = $this->describeUnreachableReason( $status, $email_ok );
-		$st_label = htmlspecialchars( $this->describeStoryteller( $low_st_id, $st_name ) );
+		$officer_label = htmlspecialchars( $this->describeStoryteller( $officer_id, $officer_name ) );
+		$escalation_headers = $this->stripCcHeader( $headers );
 
-		$chain = $this->applicationService->getEscalationSTIDs( $application, $low_st_id );
 		$skipped = array();
 		$escalated_id = null;
 		$escalated_name = '';
@@ -209,35 +229,29 @@ class EmailService {
 			$skipped[] = $candidate_id;
 		}
 
-		$app_description = htmlspecialchars( $application->description ?? '' );
-		$app_link = "<a href=\"http://legacy.modernenigmasociety.org/approvals_2017/AppDetails.php?id={$application->id}&\">".
-			"http://legacy.modernenigmasociety.org/approvals_2017/AppDetails.php?id={$application->id}&</a>";
-		$escalation_headers =
-			"From: Approval System <approvals@legacy.modernenigmasociety.org>\r\n".
-			"Reply-To: Approval System <approvals@cammail.modernenigmasociety.org>\r\n".
-			"Content-Type: text/html\r\n";
+		$what = $context['what'];
+		$who = htmlspecialchars( $context['who'] );
+		$link = $context['link'];
 
 		if( $escalated_id !== null ) {
 			$escalated_label = htmlspecialchars( $this->describeStoryteller( $escalated_id, $escalated_name ) );
 			$escalation_message = "<p>Greetings $escalated_label,</p>\n".
-				"<p>An application for $app_description has been entered ".
-				"by " . htmlspecialchars( $user_name ) . " for " . htmlspecialchars( $character_name ) . " and ".
-				"needs review.</p>\n".
-				"<p>This would normally have gone to $st_label, but the system could not reach ".
+				"<p>$what has been entered by $who and needs review.</p>\n".
+				"<p>This would normally have gone to $officer_label, but the system could not reach ".
 				"them because $reason.</p>\n".
-				"<p>Please review the application, or arrange to have the officer's membership ".
+				"<p>Please review it, or arrange to have the officer's membership ".
 				"record corrected.</p>\n".
-				"<p>Please log in to the system at $app_link to review.</p>\n".
+				"<p>Please log in to the system at $link to review.</p>\n".
 				"<p>The NTA has also been notified.</p>\n";
 			$this->deliver( $escalated_email, "[Approval System] Escalated - a storyteller with a lapsed membership", $escalation_message, $escalation_headers );
-			error_log("EmailService::sendNewApplicationEmail - escalated application {$application->id} to user $escalated_id, skipped " . count($skipped) . " (" . implode(',', $skipped) . ")");
+			error_log("EmailService::notifyOfficerOrEscalate - escalated {$context['ref']} to user $escalated_id, skipped " . count($skipped) . " (" . implode(',', $skipped) . ")");
 		} else {
-			error_log("EmailService::sendNewApplicationEmail - no active storyteller found anywhere above low ST " . ($low_st_id ?? 'null') . " for application {$application->id}; chain checked: " . implode(',', $chain));
+			error_log("EmailService::notifyOfficerOrEscalate - no active storyteller found anywhere above officer " . ($officer_id ?? 'null') . " for {$context['ref']}; chain checked: " . implode(',', $chain));
 		}
 
 		$nta_email = $this->ntaEmail();
 		if( empty( $nta_email ) || !$this->isValidEmail( $nta_email ) ) {
-			error_log("EmailService::sendNewApplicationEmail - NTA_NOTIFICATION_EMAIL missing or invalid, skipping NTA notice for application {$application->id}");
+			error_log("EmailService::notifyOfficerOrEscalate - NTA_NOTIFICATION_EMAIL missing or invalid, skipping NTA notice for {$context['ref']}");
 			return;
 		}
 
@@ -252,14 +266,119 @@ class EmailService {
 		}
 
 		$nta_message = "<p>Greetings,</p>\n".
-			"<p>An officer notification was suppressed for application {$application->id} ($app_description), ".
-			"applicant " . htmlspecialchars( $user_name ) . ".</p>\n".
-			"<p>The assigned storyteller, $st_label (user id " . htmlspecialchars( (string) ($low_st_id ?? '') ) . "), ".
+			"<p>An officer notification was suppressed for {$context['ref']} ($what), ".
+			"submitted by $who.</p>\n".
+			"<p>The assigned officer, $officer_label (user id " . htmlspecialchars( (string) ($officer_id ?? '') ) . "), ".
 			"could not be reached because $reason.</p>\n".
 			$outcome.
-			"<p>Review the application at $app_link.</p>\n".
+			"<p>Review it at $link.</p>\n".
 			"<p>This is an automated message from the Approval system.</p>\n";
-		$this->deliver( $nta_email, "[Approval System] Suppressed notification - application {$application->id}", $nta_message, $escalation_headers );
+		$this->deliver( $nta_email, "[Approval System] Suppressed notification - {$context['ref']}", $nta_message, $escalation_headers );
+	}
+
+	/**
+	 * Send an email notifying the Low storyteller of a new application
+	 * awaiting their approval. When the Low ST cannot be reached -- their
+	 * membership has expired, is unverifiable, or their email on file is
+	 * unusable -- climbs the escalation chain (see
+	 * ApplicationService::getEscalationSTIDs()) to the first reachable
+	 * storyteller and notifies both that storyteller and the NTA, instead of
+	 * silently dropping the notification as before.
+	 *
+	 * A Portal outage ('portal_unavailable') is deliberately never escalated:
+	 * it makes every member look inactive, so escalating on it would escalate
+	 * every pending application at once. Escalation can also be disabled
+	 * entirely via $SETTINGS['ESCALATION_ENABLED']; either way, nothing is
+	 * sent and the suppression is logged.
+	 *
+	 * @return void
+	 * @param $application Array
+	 * @see EmailService::notifyOfficerOrEscalate()
+	 */
+	function sendNewApplicationEmail( $application ) {
+		$user_info = $this->userInfoDAO->getUserInfo($application->user_id);
+		$low_st_id = $this->applicationService->getLowST($application);
+		$st_info = $this->userInfoDAO->getUserInfo( $low_st_id );
+		$character_info = $this->characterDAO->readByID( $application->character_id );
+		$character_name = is_object( $character_info ) ? $character_info->name : '';
+
+		$user_name = $user_info['name'] ?? '';
+		$user_email = $user_info['email'] ?? '';
+		$st_name = $st_info['name'] ?? '';
+
+		$message = "<p>Greetings $st_name,</p>\n".
+			"<p>An application for {$application->description} has been entered ".
+			"by $user_name for $character_name and ".
+			"is awaiting your review.</p>\n".
+			"<p>Your timely attention to this matter would be appreciated.</p>\n".
+			"<p>This is an automated message from the Approval system.\n".
+			"Please Log in to the system at ".
+			"<a href=\"http://legacy.modernenigmasociety.org/approvals_2017/AppDetails.php?id={$application->id}&\">".
+			"http://legacy.modernenigmasociety.org/approvals_2017/AppDetails.php?id={$application->id}&</a> to reply</p>\n";
+		$subject = "[Approval System] $user_name has just entered an application";
+		$headers =
+			"From: Approval System <approvals@legacy.modernenigmasociety.org>\r\n".
+			"Reply-To: Approval System <approvals@cammail.modernenigmasociety.org>\r\n".
+			"Content-Type: text/html\r\n".
+			"CC: $user_email\r\n";
+
+		$chain = $this->applicationService->getEscalationSTIDs( $application, $low_st_id );
+		$app_link = "<a href=\"http://legacy.modernenigmasociety.org/approvals_2017/AppDetails.php?id={$application->id}&\">".
+			"http://legacy.modernenigmasociety.org/approvals_2017/AppDetails.php?id={$application->id}&</a>";
+		$context = array(
+			'what' => "An application for " . htmlspecialchars( $application->description ?? '' ) . " for " . htmlspecialchars( $character_name ),
+			'who' => $user_name,
+			'link' => $app_link,
+			'ref' => "application {$application->id}",
+		);
+
+		$this->notifyOfficerOrEscalate( $low_st_id, $chain, $subject, $message, $headers, $context );
+	}
+
+	/**
+	 * Send an email notifying a venue storyteller that a character has applied
+	 * to join their Venue Style Sheet, awaiting their acceptance or rejection.
+	 * When the storyteller cannot be reached -- their membership has expired,
+	 * is unverifiable, or their email on file is unusable -- climbs the
+	 * escalation chain (see
+	 * ApplicationService::getEscalationSTIDsForVssSelection()) to the first
+	 * reachable storyteller and notifies both that storyteller and the NTA,
+	 * instead of silently dropping the notification as before.
+	 *
+	 * @return void
+	 * @param $storyteller_id mixed the VSS/org storyteller's user id
+	 * @param $chain array ordered candidate storyteller ids above them (see
+	 *   ApplicationService::getEscalationSTIDsForVssSelection())
+	 * @param $player_name string the applying character's player's name (or "NPC")
+	 * @param $character_name string the character's name
+	 * @param $character_subtype string the character's subtype
+	 * @see EmailService::notifyOfficerOrEscalate()
+	 * @see ApplicationService::getEscalationSTIDsForVssSelection()
+	 */
+	function sendVssJoinRequestEmail( $storyteller_id, $chain, $player_name, $character_name, $character_subtype ) {
+		$message = "$player_name has applied to add their character, ".
+			"$character_name ($character_subtype) to your Venue Style Sheet.  ".
+			"If you accept this character, you will have Low approval over this ".
+			"character, and will be able to view the character under the ".
+			"Character Census in the Storyteller menu.<br><br>\n" .
+			"This is an automated message from the Approval system.<br>".
+			"<a href=\"http://legacy.modernenigmasociety.org/approvals_2017/index.php\">Log in</a> to ".
+			"the system and choose \"VSS Character List\" from the Storyteller ".
+			"menue to accept or reject this character.";
+		$subject = "[Approval System] A character has applied to join your VSS";
+		$headers = "From: Approval System <approvals@legacy.modernenigmasociety.org>\r\n".
+			"Reply-To: Approval System <approvals@legacy.modernenigmasociety.org>\r\n".
+			"Content-Type: text/html\r\n";
+
+		$link = "<a href=\"http://legacy.modernenigmasociety.org/approvals_2017/index.php\">Log in</a>";
+		$context = array(
+			'what' => "A request for " . htmlspecialchars( $character_name ) . " (" . htmlspecialchars( $character_subtype ) . ") to join your Venue Style Sheet",
+			'who' => $player_name,
+			'link' => $link,
+			'ref' => "a VSS join request for character " . htmlspecialchars( $character_name ),
+		);
+
+		$this->notifyOfficerOrEscalate( $storyteller_id, $chain, $subject, $message, $headers, $context );
 	}
 
 	function sendChangesEmail ( $application, $changes ) {
