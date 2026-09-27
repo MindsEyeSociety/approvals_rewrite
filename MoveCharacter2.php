@@ -1,6 +1,8 @@
 <?php
   include_once("db.inc");
   require_once("include/vss_selection.inc");
+  include_once("classes/ApplicationService.php");
+  include_once("classes/EmailService.php");
 
   $vss_id = resolveVssSelection(
     isset($_POST['localvss_id']) ? $_POST['localvss_id'] : "",
@@ -33,23 +35,14 @@
       $db->query( $query, $params );
       if( $storyteller = $db->nextRow() )
       {
- 	$user_info = $userInfoDAO->getUserInfo($storyteller['id']);
- 	$storyteller['email'] = $user_info['email'];
-  if( $storyteller['email'] != '' && $userInfoDAO->isMemberActive( $storyteller['id'] ) ) {
-        $message = "$row[player_name] has applied to add their character, ".
-          "$character[name] ($character[subtype]) to your Venue Style Sheet.  ".
-          "If you accept this character, you will have Low approval over this ".
-          "character, and will be able to view the character under the ".
-          "Character Census in the Storyteller menu.<br><br>\n" .
-          "This is an automated message from the Approval system.<br>".
-          "<a href=\"http://legacy.modernenigmasociety.org/approvals_2017/index.php\">Log in</a> to ".
-          "the system and choose \"VSS Character List\" from the Storyteller ".
-          "menue to accept or reject this character.";
-        mail( $storyteller['email'], "[Approval System] A character has applied to join your VSS",
-              $message, "From: Approval System <approvals@legacy.modernenigmasociety.org>\r\n".
-              "Reply-To: Approval System <approvals@legacy.modernenigmasociety.org>\r\n".
-              "Content-Type: text/html\r\n" );
-          }
+        $characterDAO = $daoFactory->getCharacterDAO();
+        $organizationDAO = $daoFactory->getOrganizationDAO();
+        $vssDAO = $daoFactory->getVSSDAO();
+        $applicationService = new ApplicationService( $organizationDAO, $characterDAO, $vssDAO, $userInfoDAO );
+        $emailService = new EmailService( $userInfoDAO, $characterDAO, $applicationService );
+
+        $chain = $applicationService->getEscalationSTIDsForVssSelection( $vss_id, $storyteller['id'] );
+        $emailService->sendVssJoinRequestEmail( $storyteller['id'], $chain, $row['player_name'], $character['name'], $character['subtype'] );
       }
     }
   } 

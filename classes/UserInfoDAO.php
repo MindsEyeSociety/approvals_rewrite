@@ -49,47 +49,107 @@ class UserInfoDAO {
 	}
 
 	/**
-	 * Check if a member is active by querying the Portal database
-	 * Returns true if membershipExpiration is in the future (still active)
-	 * Falls back to true (allow) if portal DB is unavailable
+	 * Membership status of a Portal member, looked up by ww_number (Portal
+	 * membershipNumber). Exists so callers can tell a genuinely expired
+	 * membership apart from "we couldn't find out" -- collapsing those into a
+	 * single boolean is what let a three-week Portal outage silently look
+	 * identical to every member's membership having expired, and every
+	 * approval-notification email got dropped as a result.
+	 *
+	 * @param $ww_number The Portal membershipNumber to look up.
+	 * @return string One of 'active', 'expired', 'unknown' (status could not
+	 *         be determined, e.g. no matching Portal row or an unparseable/
+	 *         blank expiration date), or 'portal_unavailable' (the Portal DB
+	 *         connection or query itself failed).
+	 * @see membershipStatus()
+	 * @see isMemberActiveByWwNumber()
 	 */
-function isMemberActiveByWwNumber( $ww_number ) {
+function membershipStatusByWwNumber( $ww_number ) {
     // If the portal DB is unavailable we cannot verify membership status.
-    // Treat the member as inactive to avoid sending email to possibly expired accounts.
     if( $this->portal_db == null ) {
-        error_log("UserInfoDAO::isMemberActiveByWwNumber – portal DB unavailable for ww_number $ww_number");
-        return false;
+        error_log("UserInfoDAO::membershipStatusByWwNumber - portal DB unavailable for ww_number $ww_number");
+        return 'portal_unavailable';
     }
 
     $res = $this->portal_db->query(
         "SELECT membershipExpiration FROM User WHERE membershipNumber = ?",
         [$ww_number]
     );
-    if( $res !== false && $res->numRows() > 0 ) {
-        $row = $res->nextRow();
-        $expiration = $row['membershipExpiration'];
-        if( !empty( $expiration ) ) {
-            return strtotime( $expiration ) > time();
-        }
+    if( $res === false ) {
+        error_log("UserInfoDAO::membershipStatusByWwNumber - portal query failed for ww_number $ww_number");
+        return 'portal_unavailable';
+    }
+    if( $res->numRows() === 0 ) {
+        error_log("UserInfoDAO::membershipStatusByWwNumber - no portal row for ww_number $ww_number");
+        return 'unknown';
     }
 
-    // If we can't determine membership status, treat as inactive.
-    return false;
+    $row = $res->nextRow();
+    $expiration = $row['membershipExpiration'] ?? '';
+    if( empty( $expiration ) ) {
+        error_log("UserInfoDAO::membershipStatusByWwNumber - blank membershipExpiration for ww_number $ww_number");
+        return 'unknown';
+    }
+
+    $expirationTime = strtotime( $expiration );
+    if( $expirationTime === false ) {
+        error_log("UserInfoDAO::membershipStatusByWwNumber - unparseable membershipExpiration '$expiration' for ww_number $ww_number");
+        return 'unknown';
+    }
+
+    if( $expirationTime > time() ) {
+        return 'active';
+    }
+
+    error_log("UserInfoDAO::membershipStatusByWwNumber - membership EXPIRED $expiration for ww_number $ww_number");
+    return 'expired';
+}
+
+	/**
+	 * Membership status of a user, looked up by local user id via their
+	 * ww_number. Same four-way result as membershipStatusByWwNumber(), for
+	 * callers that only have a local users.id.
+	 *
+	 * @param $user_id The local users.id to check.
+	 * @return string One of 'active', 'expired', 'unknown', or 'portal_unavailable'.
+	 * @see membershipStatusByWwNumber()
+	 * @see isMemberActive()
+	 */
+function membershipStatus( $user_id ) {
+    $userInfo = $this->readApprovalsDBInfo( $user_id );
+    // If we cannot retrieve a membership number, status cannot be determined.
+    if( empty( $userInfo ) || empty( $userInfo['ww_number'] ) ) {
+        error_log("UserInfoDAO::membershipStatus - missing ww_number for user $user_id");
+        return 'unknown';
+    }
+    return $this->membershipStatusByWwNumber( $userInfo['ww_number'] );
+}
+
+	/**
+	 * Check if a member is active by querying the Portal database
+	 * Returns true if membershipExpiration is in the future (still active)
+	 * Thin boolean wrapper over membershipStatusByWwNumber(), kept bit-identical
+	 * to its pre-refactor behaviour: several email methods and other call sites
+	 * depend on this exact true/false contract. Use membershipStatusByWwNumber()
+	 * directly when the caller needs to distinguish "expired" from "unknown" or
+	 * "portal_unavailable".
+	 *
+	 * @see membershipStatusByWwNumber()
+	 */
+function isMemberActiveByWwNumber( $ww_number ) {
+    return $this->membershipStatusByWwNumber( $ww_number ) === 'active';
 }
 
 	/**
 	 * Check if a user is an active member by user ID
 	 * Looks up the ww_number from the local users table, then checks the Portal DB
+	 * Thin boolean wrapper over membershipStatus(), kept bit-identical to its
+	 * pre-refactor behaviour for the same reason as isMemberActiveByWwNumber().
+	 *
+	 * @see membershipStatus()
 	 */
 function isMemberActive( $user_id ) {
-    $userInfo = $this->readApprovalsDBInfo( $user_id );
-    // If we cannot retrieve a membership number, treat the user as inactive.
-    if( empty( $userInfo ) || empty( $userInfo['ww_number'] ) ) {
-        error_log("UserInfoDAO::isMemberActive – missing ww_number for user $user_id");
-        return false;
-    }
-    // If the portal DB is unavailable, isMemberActiveByWwNumber will return false.
-    return $this->isMemberActiveByWwNumber( $userInfo['ww_number'] );
+    return $this->membershipStatus( $user_id ) === 'active';
 }
 
 	function getVSTPositions( $userID ) {

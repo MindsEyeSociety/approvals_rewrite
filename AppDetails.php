@@ -115,6 +115,10 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
         header("Location: AppDetails.php?id=$app_info->id&mode=display&message=inputcomplete&");
         exit();
 	} else if ( $mode == "doEdit" ) {
+        // Captured before any status mutation below, so the tier-notification wiring at the
+        // end of this branch can tell an actual "Pending X" transition apart from a status
+        // that was already "Pending X" and stayed there (see EmailService::tierNotificationWarranted()).
+        $status_before_edit = $app_info->status;
         $changed = array();
         // No one may give FINAL approval to their own application, nor to one pending before an
         // office they hold only as an assistant to the applicant. The tier in play is the
@@ -198,6 +202,31 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
 
 		if ( count( $changed ) > 0 ) {
 			$revisionDAO->insert( new Revision( $app_info->id, $_SESSION["user_id"], implode( ", ", $changed ) ) );
+        }
+
+        // The required-approval ratchet above (lines ~157-185) can move the status to a new
+        // "Pending X" without anyone but the applicant (sendChangesEmail() above) ever being
+        // told -- the officer who now has to act on it hears nothing. Notify them, but never
+        // let a failure here undo the status write or the redirect that already happened above.
+        try {
+        	// Cheap pre-check first: most edits change no status at all, and resolving the tier
+        	// officer costs several queries. tierNotificationWarranted() below remains the
+        	// authoritative (and unit-tested) decision; this only avoids the work and the log
+        	// line on the common no-transition path.
+        	if ( strpos( (string) $app_info->status, 'Pending ' ) === 0 && $app_info->status !== $status_before_edit ) {
+        	$tierRank = approvalTierRank( preg_replace( '/^Pending /', '', $app_info->status ) );
+        	$tierOfficerId = $applicationService->getSTForTier( $app_info, $tierRank );
+        	if ( $emailService->tierNotificationWarranted( $app_info->status, $status_before_edit, $_SESSION['user_id'], $tierOfficerId ) ) {
+        		$tierChain = $applicationService->getEscalationSTIDsForTier( $app_info, $tierRank, $tierOfficerId );
+        		$tierApplicantInfo = $userInfoDAO->getUserInfo( $app_info->user_id );
+        		$tierCharacterName = is_object( $app_info->character ) ? $app_info->character->name : '';
+        		$emailService->sendTierNotificationEmail( $app_info, $tierRank, $tierOfficerId, $tierChain, $tierApplicantInfo['name'] ?? '', $tierCharacterName );
+        	} else {
+        		error_log("AppDetails.php doEdit - status moved to {$app_info->status} for application {$app_info->id} but no tier notification sent: officer " . ($tierOfficerId ?? 'null') . " actor {$_SESSION['user_id']}");
+        	}
+        	}
+        } catch ( \Throwable $e ) {
+        	error_log("AppDetails.php doEdit - tier notification failed for application {$app_info->id}: " . $e->getMessage());
         }
 
         if ( $finalcomment ) {
@@ -360,6 +389,30 @@ if( $mode == 'doAdd' || $mode == 'doEdit' ) {
         	$applicationDAO->updateStatus( $app_info->id, $ThisStatus );
         	$revisionDAO->insert( new Revision( $app_info->id, $_SESSION["user_id"], "Status set to $ThisStatus" ) );
         	$emailService->sendChangesEmail( $app_info, implode(", ", $changed) );
+
+        	// $app_info->status still holds the PRE-approval status here: updateStatus() writes
+        	// $ThisStatus straight to the database without ever assigning it back to $app_info.
+        	// Never let a failure here undo the status write or the redirect below.
+        	try {
+        		// Cheap pre-check first: an "Approved" outcome has no next tier to notify, and
+        		// resolving the tier officer costs several queries. tierNotificationWarranted()
+        		// below remains the authoritative (and unit-tested) decision.
+        		if ( strpos( (string) $ThisStatus, 'Pending ' ) === 0 && $ThisStatus !== $app_info->status ) {
+        		$tierRank = approvalTierRank( preg_replace( '/^Pending /', '', $ThisStatus ) );
+        		$tierOfficerId = $applicationService->getSTForTier( $app_info, $tierRank );
+        		if ( $emailService->tierNotificationWarranted( $ThisStatus, $app_info->status, $_SESSION['user_id'], $tierOfficerId ) ) {
+        			$tierChain = $applicationService->getEscalationSTIDsForTier( $app_info, $tierRank, $tierOfficerId );
+        			$tierApplicantInfo = $userInfoDAO->getUserInfo( $app_info->user_id );
+        			$tierCharacterName = is_object( $app_info->character ) ? $app_info->character->name : '';
+        			$emailService->sendTierNotificationEmail( $app_info, $tierRank, $tierOfficerId, $tierChain, $tierApplicantInfo['name'] ?? '', $tierCharacterName );
+        		} else {
+        			error_log("AppDetails.php approve - status moved to $ThisStatus for application {$app_info->id} but no tier notification sent: officer " . ($tierOfficerId ?? 'null') . " actor {$_SESSION['user_id']}");
+        		}
+        		}
+        	} catch ( \Throwable $e ) {
+        		error_log("AppDetails.php approve - tier notification failed for application {$app_info->id}: " . $e->getMessage());
+        	}
+
         	header ( "Location: AppDetails.php?id=$app_info->id&mode=display&message=updatecomplete&" );
         } else if ( $conflictReferral ) {
         	// The click was refused and referred, but the referral target can't move the status

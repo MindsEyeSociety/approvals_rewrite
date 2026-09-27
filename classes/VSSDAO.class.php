@@ -25,7 +25,33 @@ class VSSDAO {
 		$query = "SELECT storyteller_id FROM vsss WHERE id=?";
 		$this->db->query($query, [$vss_id]);
 		$result = $this->db->nextRow();
-		return $result["storyteller_id"];
+		return $result["storyteller_id"] ?? null;
+	}
+
+	/**
+	 * Looks up the organization that owns a VSS (venue style sheet), by its
+	 * raw org_id column, so escalation logic can climb the org hierarchy for
+	 * a storyteller whose notification email is suppressed.
+	 *
+	 * This deliberately does NOT reuse readByID(), which delegates to
+	 * readVSSsByID() and filters "AND o.active = 1 AND n.active = 1". Retired
+	 * venues are precisely where stale storyteller records live, so escalation
+	 * must still be able to resolve their org -- a plain, unfiltered lookup is
+	 * required here.
+	 *
+	 * @param $vss_id ID of the vsss row to look up.
+	 * @return The org_id of the owning organization, or null if no VSS with
+	 *   that id exists.
+	 * @example
+	 *   $orgId = $vssDAO->getVSSOrgID( 42 ); // => 7, even if VSS 42 sits at a retired venue
+	 * @see VSSDAO::getVSSSTID()
+	 * @see VSSDAO::readByID()
+	 */
+	function getVSSOrgID( $vss_id ) {
+		$query = "SELECT org_id FROM vsss WHERE id=?";
+		$this->db->query($query, [$vss_id]);
+		$result = $this->db->nextRow();
+		return $result["org_id"] ?? null;
 	}
 
 	function readVSSsByID( $ids ) {
